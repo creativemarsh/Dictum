@@ -22,3 +22,6 @@ pyperclip>=1.8.2
 
 # Desarrollo — auto-restart al guardar cambios (no necesario en producción)
 watchdog>=4.0.0
+
+# Compilación (Empaquetado)
+pyinstaller>=6.0.0
