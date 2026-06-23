@@ -1,0 +1,26 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos de compilación y empaquetado (PyInstaller)
+build/
+dist/
+*.spec
+
+# Logs temporales
+*.log
+logs/
+
+# Carpetas de editores y sistema
+.vscode/
+.idea/
+.agents/
+.DS_Store
+*.bat
+__init__.py
