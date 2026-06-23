@@ -1,97 +1,130 @@
-# Dictum
+# Dictum 🎙️
 
-Dictum es una aplicación de escritorio diseñada para **dictado de voz inteligente con reescritura semántica por Inteligencia Artificial**.
-Sirve como una alternativa privada y personalizable a herramientas comerciales, permitiéndote hablar naturalmente mientras la IA se encarga de corregir muletillas, eliminar repeticiones y dar formato al texto, que luego se copia automáticamente a tu portapapeles.
+Dictum is an open source desktop app for **intelligent voice dictation with AI semantic rewriting**.
 
-## 🚀 ¿Qué debe hacer Dictum?
-La misión principal de Dictum es hacer el dictado perfecto, perdonando los errores humanos:
-- **Push-to-Talk Universal:** Permite usar una tecla de acceso rápido global (por defecto `Alt`) para grabar voz en cualquier momento, sin importar qué ventana de tu PC esté activa.
-- **Transcripción Rápida (Voz a Texto):** Convierte el audio en texto crudo de forma rápida usando **Whisper** (preferiblemente de forma local usando aceleración de GPU).
-- **Reescritura Semántica (Texto a Texto):** Toma la transcripción "sucia" (con errores o muletillas) y la pasa por un modelo de lenguaje (LLM) que limpia, da formato y corrige usando el contexto de tu profesión. 
-- **Integración Transparente:** Al terminar, el texto procesado se guarda automáticamente en el portapapeles, listo para pegarse (`Ctrl + V`) en correos, editores de código o chats.
+Speak naturally — with filler words, hesitations, self-corrections — and Dictum will transcribe your voice, clean it up with an LLM, and drop the result straight into your clipboard. No cloud required if you don't want it.
 
 ---
 
-## 🎮 Cómo se debe manejar el programa (Guía de Uso)
+## How it works
 
-### 1. El Flujo de Trabajo Diario
-Manejar Dictum es muy sencillo:
-1. Mantén presionada la tecla **Alt** (o la que hayas configurado).
-2. Habla con naturalidad a tu micrófono. Puedes dudar, usar muletillas ("ehhh", "mmm") o corregirte sobre la marcha ("escribe hola, ah no espera, mejor escribe adiós").
-3. Suelta la tecla **Alt**.
-4. Verás una notificación en la interfaz o un icono en la bandeja del sistema procesando. Al terminar el procesamiento (usualmente un par de segundos), escucharás un sonido de éxito y el texto limpio estará en tu portapapeles.
-
-### 2. Configuración Inicial (Pestaña "Ajustes")
-Para que Dictum sea preciso, debes configurarlo desde su interfaz:
-
-- **Configurar la Transcripción (Whisper):**
-  Ve a la sección Whisper. Si tienes una tarjeta de video NVIDIA, elige el modo **Local** y el modelo `medium`. Esto te dará la máxima privacidad y buena velocidad.
-  
-- **Configurar la IA (El "Cerebro"):**
-  Tienes dos opciones para la reescritura:
-  - **Ollama (100% Privado y Local):** Necesitas tener Ollama instalado en tu PC. Descarga un modelo (ej. `ollama pull mistral`), presiona "Refrescar Modelos" en Dictum y selecciónalo.
-  - **OpenRouter (Nube):** Si tu PC no es tan potente, crea una cuenta en [OpenRouter.ai](https://openrouter.ai), genera una API Key gratuita y pégala en los ajustes de Dictum.
-
-- **Perfiles Personalizados:**
-  Puedes configurar "Perfiles". Dile a Dictum a qué te dedicas (ej. "Desarrollador Web") y pásale términos técnicos que usas a diario. Así la IA no confundirá "React" con "Rial", o "Python" con "Paiton".
+1. Hold **Alt** (or your configured key) and speak into your mic
+2. Release the key
+3. Dictum transcribes your audio locally with **faster-whisper**
+4. An LLM rewrites the raw transcription — removing fillers, fixing grammar, applying your custom technical vocabulary
+5. The clean text lands in your clipboard, ready to paste anywhere
 
 ---
 
-## ⚙️ Cómo instalarlo (Para Desarrolladores)
+## Features
 
-### Requisitos Previos
-- Python 3.10 o superior.
-- Una GPU NVIDIA con soporte CUDA 11.8+ (Recomendado).
-- [Ollama](https://ollama.com/) (opcional, para modelos locales).
+- 🌐 **Universal push-to-talk** — works globally across any active window
+- ⚡ **Local transcription** via faster-whisper with GPU acceleration (CUDA)
+- 🤖 **AI rewriting** via Ollama (local/private) or OpenRouter (cloud)
+- 👤 **Custom profiles** — tell Dictum your profession and technical terms so the AI doesn't mangle them
+- 🔇 **Silent background mode** — runs without a terminal window via `Dictum.bat`
+- 📋 **Clipboard integration** — processed text is always one `Ctrl+V` away
+- 🔒 **Privacy-first** — fully local setup possible with Ollama + faster-whisper
 
-### Instalación Paso a Paso
-Abre una terminal, ubícate en la carpeta del proyecto y sigue estos comandos:
+---
+
+## Requirements
+
+- Python 3.10+
+- NVIDIA GPU with CUDA 11.8+ (recommended — CPU works but slower)
+- [Ollama](https://ollama.com/) (optional, for local AI rewriting)
+
+---
+
+## Installation
 
 ```bash
-# 1. Crear y activar el entorno virtual (Recomendado)
+# Clone the repository
+git clone https://github.com/creativemarsh/Dictum.git
+cd Dictum
+```
+
+**Option A — Automatic (recommended):**
+
+Run `setup.bat`. It will create the virtual environment, activate it, and install all dependencies including PyTorch with CUDA support.
+
+**Option B — Manual:**
+
+```bash
+# Create and activate virtual environment
 python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Linux/macOS
 
-# En Windows:
-.venv\Scripts\activate
-# En Linux/Mac:
-# source .venv/bin/activate
-
-# 2. Instalar las dependencias base
+# Install base dependencies
 pip install -r requirements.txt
 
-# 3. Instalar PyTorch con soporte CUDA (Necesario para usar tu GPU con Whisper)
+# Install PyTorch with CUDA support
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-### Ejecución
-Una vez instaladas las dependencias, simplemente ejecuta:
+---
+
+## Running
+
 ```bash
 python main.py
 ```
 
----
+Or use the included scripts:
 
-## 🧰 Scripts de Utilidad (.bat)
-
-El repositorio incluye varios archivos `.bat` diseñados con rutas dinámicas (`%~dp0`), lo que significa que **puedes ejecutar el proyecto desde cualquier carpeta o pendrive** sin tener que modificar el código.
-
-- **`setup.bat`**: Prepara todo el entorno automáticamente. Crea el entorno virtual, lo activa e instala todas las librerías necesarias de `requirements.txt` (incluyendo PyTorch con soporte para CUDA). Ideal para la primera vez que clonas el proyecto.
-- **`build.bat`**: Automatiza la compilación del proyecto. Limpia archivos residuales y usa PyInstaller con el archivo `Dictum.spec` para generar un ejecutable (`.exe`) listo para usar o distribuir.
-- **`Dictum.bat`**: Un lanzador silencioso. Inicia la aplicación usando `pythonw.exe`, lo que permite que el programa corra nativamente en segundo plano sin dejar una ventana negra de la terminal abierta.
-- **`dev.bat`**: Script para desarrolladores. Ejecuta la aplicación utilizando `watchmedo`. Si modificas cualquier archivo `.py` en VS Code, el script detectará el cambio y reiniciará la aplicación automáticamente, ahorrándote tiempo durante el desarrollo.
+| Script | Description |
+|---|---|
+| `setup.bat` | First-time setup — creates venv and installs all dependencies |
+| `Dictum.bat` | Silent launcher — runs the app without a terminal window |
+| `dev.bat` | Development mode — auto-restarts on any `.py` file change |
+| `build.bat` | Builds a standalone `.exe` via PyInstaller |
 
 ---
 
-## 🏗️ Cómo lo hace (Arquitectura del Código)
+## Configuration
 
-Dictum está estructurado de manera limpia, separando la interfaz de la lógica:
+On first launch, open the **Settings** tab:
 
-1. **Captura de Teclas y Audio (`core/audio_capture.py`):** 
-   Utiliza la librería `keyboard` a nivel de sistema operativo para saber cuándo presionas `Alt`. Mientras la presionas, la librería `sounddevice` graba el audio desde tu micrófono por defecto.
-2. **Transcripción (`core/transcriber.py`):** 
-   Ese audio se envía a la librería `faster-whisper`. Esta herramienta carga un modelo de IA de OpenAI directamente en tu tarjeta de video para convertir la voz en texto muy rápido.
-3. **Reescritura por IA (`core/rewriter.py`):** 
-   Aquí ocurre la magia. El texto bruto se manda a Ollama (local) o OpenRouter (nube) usando la librería `httpx`. Dictum inyecta un *System Prompt* estricto (instrucciones maestras) que le prohíben a la IA "conversar" contigo, obligándola únicamente a limpiar muletillas, arreglar errores gramaticales y aplicar los términos técnicos de tu Perfil.
-4. **Interfaz Gráfica (`gui/`):** 
-   Toda la ventana, configuraciones y botones están construidos con **PyQt6**. La aplicación maneja procesos en segundo plano usando Hilos (`QRunnable` y `QThreadPool`) para que la ventana nunca se quede "congelada" mientras la IA procesa el texto. Todo se guarda automáticamente en `~/.voicedraft/config.json`.
+- **Whisper:** Choose Local (GPU) or configure an alternative. For NVIDIA GPUs, `medium` model is the recommended balance of speed and accuracy.
+- **AI Rewriting:**
+  - **Ollama** — install Ollama, pull a model (`ollama pull mistral`), hit "Refresh Models" in Dictum
+  - **OpenRouter** — create an account at [openrouter.ai](https://openrouter.ai), generate an API key, paste it in settings
+- **Profiles** — set your profession and technical vocabulary so the AI handles domain-specific terms correctly (e.g. "React", "KQL", "FastAPI")
 
+All settings are saved automatically to `~/.dictum/config.json`.
+
+---
+
+## Architecture
+
+```
+Dictum/
+├── core/
+│   ├── audio_capture.py   # Global hotkey + mic recording (keyboard + sounddevice)
+│   ├── transcriber.py     # faster-whisper integration, GPU acceleration
+│   └── rewriter.py        # LLM rewriting via Ollama or OpenRouter (httpx)
+└── gui/                   # PyQt6 interface, QRunnable/QThreadPool for async processing
+```
+
+The app separates logic (`core/`) from the UI (`gui/`) — keep that structure when contributing.
+
+---
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+
+---
+
+## License
+
+GPL v3 — see [LICENSE](LICENSE).
+
+You can use, modify, and distribute Dictum freely. If you publish a modified version, it must also be open source under the same license.
+
+---
+
+## Credits
+
+Built by [@creativemarsh](https://github.com/creativemarsh) with AI assistance (Claude and Antigravity) for code generation and structure. The author acted as architect, reviewer, and tester. Community refactoring and improvements are warmly welcome.
