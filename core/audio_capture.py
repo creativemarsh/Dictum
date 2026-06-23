@@ -132,21 +132,33 @@ class HotkeyListener(QObject):
         keyboard.unhook_all()
         self._active = False
 
-    def _matches(self, event_name: str) -> bool:
-        if not event_name:
+    def _matches(self, event) -> bool:
+        if not event or not getattr(event, 'name', None):
             return False
-        event_name = event_name.lower()
+            
+        event_name = event.name.lower()
+        
+        # La librería keyboard emite nombres genéricos para las teclas izquierdas.
+        # Normalizamos a explícitamente 'left' para poder distinguirlas.
+        if event_name == 'ctrl': event_name = 'left ctrl'
+        elif event_name == 'shift': event_name = 'left shift'
+        elif event_name == 'alt': event_name = 'left alt'
+        elif event_name == 'windows': event_name = 'left windows'
+        
         hotkey = self.hotkey.lower()
+        
         if event_name == hotkey:
             return True
-        # Si el hotkey es genérico y el evento es específico
-        if hotkey in ('alt', 'ctrl', 'shift'):
+            
+        # Soporte por si el usuario escribe manualmente "ctrl" genérico en el config.json
+        if hotkey in ('alt', 'ctrl', 'shift', 'windows'):
             if event_name in (f'left {hotkey}', f'right {hotkey}'):
                 return True
+                
         return False
 
     def _on_key_press(self, event):
-        if self._matches(event.name) and not self._active:
+        if self._matches(event) and not self._active:
             self._active = True
             self.pressed.emit()
             # Iniciamos un hilo que monitorea activamente cuándo se suelta la tecla
@@ -154,16 +166,34 @@ class HotkeyListener(QObject):
             self._monitor_thread.start()
 
     def _monitor_release(self):
-        while self._active:
+        import keyboard
+        import time
+        
+        # Generar lista de posibles nombres equivalentes para polling
+        keys_to_check = [self.hotkey]
+        if self.hotkey == 'left alt': keys_to_check.extend(['alt', 'menu'])
+        elif self.hotkey == 'right alt': keys_to_check.extend(['alt gr', 'right alt', 'menu'])
+        elif self.hotkey == 'left ctrl': keys_to_check.extend(['ctrl'])
+        elif self.hotkey == 'left shift': keys_to_check.extend(['shift'])
+        elif self.hotkey == 'left windows': keys_to_check.extend(['windows'])
+        
+        while True:
+            time.sleep(0.05)
             try:
-                # is_pressed chequea el estado físico real de la tecla
-                if not keyboard.is_pressed(self.hotkey):
+                is_pressed = False
+                for k in keys_to_check:
+                    try:
+                        if keyboard.is_pressed(k):
+                            is_pressed = True
+                            break
+                    except ValueError:
+                        pass
+                        
+                if not is_pressed:
                     self._active = False
                     self.released.emit()
                     break
             except Exception:
-                # Si is_pressed falla (ej: tecla no reconocida), soltamos por seguridad
                 self._active = False
                 self.released.emit()
                 break
-            time.sleep(0.05)

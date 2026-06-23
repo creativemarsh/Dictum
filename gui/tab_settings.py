@@ -164,17 +164,21 @@ def _key_display_name(name: str) -> str:
 
 
 class KeyFilter(QObject):
-    key_pressed = pyqtSignal(int, str, int)
+    key_pressed = pyqtSignal(int, str, int, int)
 
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.Type.KeyPress:
-            self.key_pressed.emit(event.key(), event.text(), event.nativeVirtualKey())
+        from PyQt6.QtCore import QEvent
+        # Atrapamos KeyPress y ShortcutOverride (vital para el Alt).
+        # IGNORAMOS KeyRelease para evitar lecturas falsas cuando la tecla ya está suelta.
+        if event.type() in (QEvent.Type.KeyPress, QEvent.Type.ShortcutOverride):
+            # A veces Alt manda un código 0 en ShortcutOverride, lo procesamos igual.
+            self.key_pressed.emit(event.key() if hasattr(event, 'key') else 0, event.text() if hasattr(event, 'text') else "", 0, 0)
             return True
         return False
 
 
 class KeyCaptureWidget(QWidget):
-    """Muestra la tecla configurada y permite cambiarla presionando cualquier tecla."""
+    """Muestra la tecla configurada y permite cambiarla interceptando eventos de PyQt6."""
     key_changed  = pyqtSignal(str)
 
     def __init__(self, parent=None):
@@ -222,7 +226,6 @@ class KeyCaptureWidget(QWidget):
         self._display.setStyleSheet(STYLE_KEY_LABEL_ACTIVE)
         self._btn.setText('✕ Cancelar')
         
-        # Instalar filtro de eventos global en la aplicación
         from PyQt6.QtWidgets import QApplication
         self._filter = KeyFilter(self)
         self._filter.key_pressed.connect(self._on_captured_key)
@@ -239,26 +242,46 @@ class KeyCaptureWidget(QWidget):
         self._display.setText(_key_display_name(self._current_key))
         self._btn.setText('Capturar')
 
-    def _on_captured_key(self, key: int, text: str, nvk: int):
-        # Diferenciar modificadores izquierdo/derecho en Windows (virtual key codes)
-        _MODIFIERS_MAP = {
-            160: 'left shift',
-            161: 'right shift',
-            162: 'left ctrl',
-            163: 'right ctrl',
-            164: 'left alt',
-            165: 'right alt',
-        }
+    def _on_captured_key(self, key: int, text: str, nvk: int, nsc: int):
+        import sys
+        from PyQt6.QtCore import Qt
+        key_name = ""
 
-        if nvk in _MODIFIERS_MAP:
-            key_name = _MODIFIERS_MAP[nvk]
+        if sys.platform == 'win32':
+            import ctypes
+            # Verificación a nivel de hardware (kernel) en el milisegundo exacto.
+            if ctypes.windll.user32.GetAsyncKeyState(161) & 0x8000: key_name = 'right shift'
+            elif ctypes.windll.user32.GetAsyncKeyState(160) & 0x8000: key_name = 'left shift'
+            elif ctypes.windll.user32.GetAsyncKeyState(163) & 0x8000: key_name = 'right ctrl'
+            elif ctypes.windll.user32.GetAsyncKeyState(162) & 0x8000: key_name = 'left ctrl'
+            elif ctypes.windll.user32.GetAsyncKeyState(165) & 0x8000: key_name = 'right alt'
+            elif ctypes.windll.user32.GetAsyncKeyState(164) & 0x8000: key_name = 'left alt'
+            elif ctypes.windll.user32.GetAsyncKeyState(92) & 0x8000: key_name = 'right windows'
+            elif ctypes.windll.user32.GetAsyncKeyState(91) & 0x8000: key_name = 'left windows'
         else:
+            import keyboard
+            if key == Qt.Key.Key_Control:
+                if keyboard.is_pressed('right ctrl'): key_name = 'right ctrl'
+                else: key_name = 'left ctrl'
+            elif key == Qt.Key.Key_Shift:
+                if keyboard.is_pressed('right shift'): key_name = 'right shift'
+                else: key_name = 'left shift'
+            elif key in (Qt.Key.Key_Alt, Qt.Key.Key_AltGr):
+                if keyboard.is_pressed('right alt') or keyboard.is_pressed('alt gr'): key_name = 'right alt'
+                else: key_name = 'left alt'
+            elif key == Qt.Key.Key_Meta:
+                if keyboard.is_pressed('right windows'): key_name = 'right windows'
+                else: key_name = 'left windows'
+
+        if not key_name:
+            # Si no es un modificador, o fallaron las APIs, delegamos al mapeo estándar
             key_name = self._map_qt_key_to_name(key, text)
 
         if key_name:
             self._apply_key(key_name)
 
     def _map_qt_key_to_name(self, key: int, text: str) -> str:
+        from PyQt6.QtCore import Qt
         _QT_KEY_MAP = {
             Qt.Key.Key_Alt: 'alt',
             Qt.Key.Key_Control: 'ctrl',

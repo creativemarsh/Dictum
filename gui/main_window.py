@@ -367,6 +367,7 @@ class MainWindow(QMainWindow):
         # Actualizar tray
         self._tray.setToolTip(f"Dictum — {new_hotkey.title()} para grabar")
         self._tab_transcribe.refresh_hint()
+        self._tab_transcribe._load_profiles()
 
     @pyqtSlot(QSystemTrayIcon.ActivationReason)
     def _tray_activated(self, reason):
