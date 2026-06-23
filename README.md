@@ -71,6 +71,17 @@ python main.py
 
 ---
 
+## 🧰 Scripts de Utilidad (.bat)
+
+El repositorio incluye varios archivos `.bat` diseñados con rutas dinámicas (`%~dp0`), lo que significa que **puedes ejecutar el proyecto desde cualquier carpeta o pendrive** sin tener que modificar el código.
+
+- **`setup.bat`**: Prepara todo el entorno automáticamente. Crea el entorno virtual, lo activa e instala todas las librerías necesarias de `requirements.txt` (incluyendo PyTorch con soporte para CUDA). Ideal para la primera vez que clonas el proyecto.
+- **`build.bat`**: Automatiza la compilación del proyecto. Limpia archivos residuales y usa PyInstaller con el archivo `Dictum.spec` para generar un ejecutable (`.exe`) listo para usar o distribuir.
+- **`Dictum.bat`**: Un lanzador silencioso. Inicia la aplicación usando `pythonw.exe`, lo que permite que el programa corra nativamente en segundo plano sin dejar una ventana negra de la terminal abierta.
+- **`dev.bat`**: Script para desarrolladores. Ejecuta la aplicación utilizando `watchmedo`. Si modificas cualquier archivo `.py` en VS Code, el script detectará el cambio y reiniciará la aplicación automáticamente, ahorrándote tiempo durante el desarrollo.
+
+---
+
 ## 🏗️ Cómo lo hace (Arquitectura del Código)
 
 Dictum está estructurado de manera limpia, separando la interfaz de la lógica:

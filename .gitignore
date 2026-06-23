@@ -22,5 +22,3 @@ logs/
 .idea/
 .agents/
 .DS_Store
-*.bat
-__init__.py

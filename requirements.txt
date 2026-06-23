@@ -6,7 +6,7 @@ PyQt6>=6.6.0
 
 # Audio
 sounddevice>=0.4.6
-numpy>=1.24.0
+numpy==1.26.4
 
 # Hotkey global (Windows + Linux)
 keyboard>=0.13.5
