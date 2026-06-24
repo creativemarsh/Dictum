@@ -31,9 +31,19 @@ echo [3/4] Instalando dependencias (requirements.txt) ...
 pip install --upgrade pip
 pip install -r requirements.txt
 
-:: Instalar PyTorch con CUDA 11.8 (para faster-whisper)
-echo [4/4] Instalando PyTorch con CUDA 11.8 ...
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
+:: Preguntar si instalar PyTorch
+echo.
+echo [4/4] Instalacion opcional de PyTorch
+echo Dictum usa ctranslate2 para la GPU. Si ya tienes CUDA Toolkit instalado en tu sistema, no necesitas PyTorch.
+echo Sin embargo, si quieres que pip descargue los DLLs de CUDA automaticamente (pesa ~2.5GB),
+echo instalar PyTorch es la forma mas rapida.
+set /p INSTALL_PT="¿Deseas instalar PyTorch para obtener los DLLs de CUDA? (s/N): "
+if /I "%INSTALL_PT%"=="s" (
+    echo Instalando PyTorch con CUDA 11.8 ...
+    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
+) else (
+    echo Saltando la instalacion de PyTorch.
+)
 
 echo.
 echo ============================================

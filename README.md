@@ -46,7 +46,7 @@ cd Dictum
 
 **Option A — Automatic (recommended):**
 
-Run `setup.bat`. It will create the virtual environment, activate it, and install all dependencies including PyTorch with CUDA support.
+Run `setup.bat`. It will create the virtual environment, activate it, and install dependencies. It will also ask if you want to install PyTorch (a ~2.5GB download) to automatically get the CUDA DLLs required for GPU acceleration.
 
 **Option B — Manual:**
 
@@ -59,8 +59,10 @@ python -m venv .venv
 # Install base dependencies
 pip install -r requirements.txt
 
-# Install PyTorch with CUDA support
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Optional: Install PyTorch with CUDA support (If you don't have CUDA Toolkit installed globally)
+# This is an easy way to get the CUDA DLLs required by ctranslate2 to use your GPU.
+# If you already have CUDA installed, you can skip this.
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
 ---
