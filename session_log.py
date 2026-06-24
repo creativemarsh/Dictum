@@ -1,11 +1,11 @@
 """
 session_log.py
-Log por sesión y fecha en ~/.voicedraft/logs/YYYY-MM-DD.log
+Log por sesión y fecha en ~/.dictum/logs/YYYY-MM-DD.log
 """
 from datetime import datetime
 from pathlib import Path
 
-LOG_DIR = Path(__file__).parent / "logs"
+LOG_DIR = Path.home() / ".dictum" / "logs"
 
 
 def _log_file() -> Path:

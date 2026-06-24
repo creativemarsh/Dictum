@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-HISTORY_PATH = Path.home() / ".voicedraft" / "history.json"
+HISTORY_PATH = Path.home() / ".dictum" / "history.json"
 MAX_ENTRIES = 200
 
 
