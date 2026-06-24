@@ -1,0 +1,22 @@
+name: Check i18n Locales
+
+on:
+  pull_request:
+    paths:
+      - 'locales/**'
+      - 'scripts/check_i18n.py'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Run i18n keys verification
+        run: python scripts/check_i18n.py

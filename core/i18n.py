@@ -21,18 +21,31 @@ class I18n:
         
         locales_dir = get_base_path() / "locales"
         file_path = locales_dir / f"{self._lang}.json"
-        
-        if not file_path.exists():
-            # Fallback to English
-            file_path = locales_dir / "en.json"
-            
         try:
-            if file_path.exists():
-                with open(file_path, "r", encoding="utf-8") as f:
+            # 1. Cargar inglés como base
+            base_path = locales_dir / "en.json"
+            if base_path.exists():
+                with open(base_path, "r", encoding="utf-8") as f:
                     self._locales = json.load(f)
+            
+            # 2. Cargar español para rellenar cualquier llave que falte en inglés
+            es_path = locales_dir / "es.json"
+            if es_path.exists():
+                with open(es_path, "r", encoding="utf-8") as f:
+                    es_dict = json.load(f)
+                    for k, v in es_dict.items():
+                        if k not in self._locales:
+                            self._locales[k] = v
+            
+            # 3. Finalmente, sobreescribir todo con el idioma que el usuario eligió
+            if self._lang != "en":
+                target_path = locales_dir / f"{self._lang}.json"
+                if target_path.exists():
+                    with open(target_path, "r", encoding="utf-8") as f:
+                        target_locales = json.load(f)
+                        self._locales.update(target_locales)
         except Exception as e:
-            print(f"Error loading translation file {file_path}: {e}")
-            self._locales = {}
+            pass # Ignorar para no crashear pythonw.exe
 
     def t(self, key: str, default: str = None) -> str:
         return self._locales.get(key, default or key)
