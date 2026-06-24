@@ -199,11 +199,7 @@ class TranscribeTab(QWidget):
         self._btn_copy.setVisible(False)
         btn_row.addWidget(self._btn_copy)
 
-        self._btn_paste = QPushButton("pegar directo")
-        self._btn_paste.setStyleSheet(STYLE_BTN)
-        self._btn_paste.clicked.connect(self._paste)
-        self._btn_paste.setVisible(False)
-        btn_row.addWidget(self._btn_paste)
+
 
         layout.addLayout(btn_row)
 
@@ -263,8 +259,6 @@ class TranscribeTab(QWidget):
 
         self._btn_cancel.setVisible(state in ("recording", "processing"))
         self._btn_copy.setVisible(state == "done")
-        self._btn_paste.setVisible(state == "done")
-
     @pyqtSlot(float)
     def update_level(self, rms: float):
         self._wave.set_level(rms)
@@ -294,11 +288,7 @@ class TranscribeTab(QWidget):
         if self._result_text:
             pyperclip.copy(self._result_text)
 
-    def _paste(self):
-        if self._result_text:
-            pyperclip.copy(self._result_text)
-            import keyboard
-            keyboard.send("ctrl+v")
+
 
     def _load_profiles(self):
         import config
