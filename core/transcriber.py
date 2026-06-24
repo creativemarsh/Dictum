@@ -54,8 +54,8 @@ class TranscribeTask(QRunnable):
         audio_array  = self._wav_to_float32()
 
         try:
-            import torch
-            cuda_ok = torch.cuda.is_available()
+            import ctranslate2
+            cuda_ok = ctranslate2.get_cuda_device_count() > 0
         except ImportError:
             cuda_ok = False
 

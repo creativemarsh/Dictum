@@ -359,10 +359,9 @@ class CudaChecker(QObject):
 
     def check(self):
         try:
-            import torch
-            if torch.cuda.is_available():
-                name = torch.cuda.get_device_name(0)
-                self.result.emit(f"CUDA disponible — {name}", "#639922")
+            import ctranslate2
+            if ctranslate2.get_cuda_device_count() > 0:
+                self.result.emit("CUDA disponible (vía CTranslate2)", "#639922")
             else:
                 self.result.emit("CUDA no disponible — se usará CPU", "#EF9F27")
         except Exception as e:
