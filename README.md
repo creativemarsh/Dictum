@@ -117,6 +117,16 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started
 
 ---
 
+## Built with Dictum?
+
+The best way to improve Dictum is to contribute directly — bug fixes, new features, platform support. Check the [open issues](https://github.com/creativemarsh/Dictum/issues) and the [contributing guide](CONTRIBUTING.md) to get started.
+
+That said, Dictum is intentionally fork-friendly. The architecture is simple and modular enough that you can take it as a base and build something completely different — a profession-specific tool, a different UI, a headless version, whatever makes sense for your use case.
+
+If you build something with Dictum as a base, share it in [Discussions](https://github.com/creativemarsh/Dictum/discussions/7) — we'd love to see where you take it.
+
+---
+
 ## License
 
 GPL v3 — see [LICENSE](LICENSE).
