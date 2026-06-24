@@ -23,6 +23,7 @@ from gui.tab_transcribe import TranscribeTab
 from gui.tab_stats      import StatsTab
 from gui.tab_settings   import SettingsTab
 from gui.tab_history    import HistoryTab
+from core.i18n import t
 
 STYLE = """
 QMainWindow, QWidget {
@@ -101,10 +102,10 @@ class MainWindow(QMainWindow):
         self._tab_settings   = SettingsTab()
         self._tab_history    = HistoryTab()
 
-        self._tabs.addTab(self._tab_transcribe, "transcripción")
-        self._tabs.addTab(self._tab_stats,      "estadísticas")
-        self._tabs.addTab(self._tab_history,    "historial")
-        self._tabs.addTab(self._tab_settings,   "ajustes")
+        self._tabs.addTab(self._tab_transcribe, t("tab_transcribe"))
+        self._tabs.addTab(self._tab_stats,      t("tab_stats"))
+        self._tabs.addTab(self._tab_history,    t("tab_history"))
+        self._tabs.addTab(self._tab_settings,   t("tab_settings"))
 
     def _make_titlebar(self) -> QWidget:
         bar = QWidget()
@@ -160,11 +161,11 @@ class MainWindow(QMainWindow):
         self._tray = QSystemTrayIcon(self)
         self._update_tray_icon("idle")
         cfg = config.load()
-        self._tray.setToolTip(f"Dictum — {cfg.get('hotkey', 'alt').title()} para grabar")
+        self._tray.setToolTip(f"Dictum — {cfg.get('hotkey', 'alt').title()} {t('tray_record_hint', 'para grabar')}")
 
         menu = QMenu()
-        show_action = QAction("Mostrar", self)
-        quit_action = QAction("Salir", self)
+        show_action = QAction(t("tray_show"), self)
+        quit_action = QAction(t("tray_quit"), self)
         show_action.triggered.connect(self.show)
         quit_action.triggered.connect(QApplication.quit)
         menu.addAction(show_action)
@@ -350,7 +351,7 @@ class MainWindow(QMainWindow):
     def _to_tray(self):
         self.hide()
         cfg = config.load()
-        self._tray.showMessage("Dictum", f"Corriendo en el tray — {cfg.get('hotkey', 'alt').title()} para grabar", QSystemTrayIcon.MessageIcon.Information, 2000)
+        self._tray.showMessage("Dictum", f"{t('tray_running', 'Corriendo en el tray')} — {cfg.get('hotkey', 'alt').title()} {t('tray_record_hint', 'para grabar')}", QSystemTrayIcon.MessageIcon.Information, 2000)
 
     @pyqtSlot()
     def _on_settings_saved(self):
@@ -365,7 +366,7 @@ class MainWindow(QMainWindow):
         self._hotkey.released.connect(self._on_hotkey_released)
         self._hotkey.start()
         # Actualizar tray
-        self._tray.setToolTip(f"Dictum — {new_hotkey.title()} para grabar")
+        self._tray.setToolTip(f"Dictum — {new_hotkey.title()} {t('tray_record_hint', 'para grabar')}")
         self._tab_transcribe.refresh_hint()
         self._tab_transcribe._load_profiles()
 

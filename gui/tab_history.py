@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 import history as hist
+from core.i18n import t
 
 STYLE_CARD = """
     QFrame {
@@ -57,7 +58,7 @@ class HistoryCard(QFrame):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        copy_btn = QPushButton("copiar")
+        copy_btn = QPushButton(t("btn_copy"))
         copy_btn.setStyleSheet(STYLE_BTN)
         _text = entry.get("text", "")
         copy_btn.clicked.connect(lambda: pyperclip.copy(_text))
@@ -77,11 +78,11 @@ class HistoryTab(QWidget):
         outer.setSpacing(10)
 
         header = QHBoxLayout()
-        self._count_lbl = QLabel("historial")
+        self._count_lbl = QLabel(t("hist_title"))
         self._count_lbl.setStyleSheet("font-size: 11px; color: #5f5e5a; letter-spacing: 0.05em;")
         header.addWidget(self._count_lbl)
         header.addStretch()
-        clear_btn = QPushButton("limpiar todo")
+        clear_btn = QPushButton(t("hist_clear"))
         clear_btn.setStyleSheet(STYLE_BTN_DANGER)
         clear_btn.clicked.connect(self._clear)
         header.addWidget(clear_btn)
@@ -119,7 +120,7 @@ class HistoryTab(QWidget):
         entries = hist.load()
 
         if not entries:
-            empty = QLabel("aún no hay transcripciones guardadas")
+            empty = QLabel(t("hist_empty"))
             empty.setStyleSheet("font-size: 13px; color: #444441; font-style: italic;")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._list_layout.insertWidget(0, empty)
@@ -128,7 +129,7 @@ class HistoryTab(QWidget):
                 self._list_layout.insertWidget(i, HistoryCard(entry))
 
         n = len(entries)
-        self._count_lbl.setText(f"historial — {n} entrada{'s' if n != 1 else ''}")
+        self._count_lbl.setText(f"{t('hist_title').lower()} — {n}")
 
     def _clear(self):
         hist.clear()

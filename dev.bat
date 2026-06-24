@@ -1,7 +1,7 @@
 @echo off
-echo [Dictum DEV] Iniciando con auto-restart...
-echo Cualquier cambio en archivos .py reinicia la app automaticamente.
-echo Ctrl+C para salir.
+echo [Dictum DEV] Starting with auto-restart...
+echo Any changes in .py files will automatically restart the app.
+echo Ctrl+C to exit.
 echo.
 
 .venv\Scripts\watchmedo auto-restart ^

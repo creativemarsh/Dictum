@@ -150,18 +150,34 @@ class RewriteTask(QRunnable):
             raise ValueError(f"Error inesperado con OpenRouter: {str(e)}")
 
 
-_PROFILE_PROMPT = """Eres un asistente que configura un software de dictado de voz con corrección por IA.
+def build_profile_prompt(cfg: dict) -> str:
+    lang = cfg.get("language", "es")
+    
+    base = """Eres un asistente que configura un software de dictado de voz con corrección por IA.
 A partir de la descripción del trabajo del usuario, genera su perfil de configuración.
 
 Responde ÚNICAMENTE con un objeto JSON (sin markdown, sin explicaciones previas ni posteriores):
 {
-  "role": "descripción concisa del perfil, 1-2 oraciones. Si mezcla español e inglés, indícalo.",
+  "role": "descripción concisa del perfil, 1-2 oraciones.",
   "custom_terms": "término1, término2, término3, ..."
-}
+}"""
 
-En "custom_terms" incluye: términos técnicos del área, anglicismos que podría pronunciar, \
-herramientas/tecnologías/plataformas, acrónimos frecuentes. \
-Sin descripciones, solo los términos separados por coma."""
+    if lang == "en":
+        extra = """
+IMPORTANTE (IDIOMA INGLÉS):
+El usuario dictará EXCLUSIVAMENTE EN INGLÉS. 
+1. El "role" DEBE estar escrito en inglés.
+2. Los "custom_terms" DEBEN estar únicamente en inglés (términos técnicos, herramientas, acrónimos). NO incluyas traducciones ni mezclas en español.
+Sin descripciones adicionales, solo los términos separados por coma."""
+    else:
+        extra = """
+IMPORTANTE (IDIOMA ESPAÑOL):
+El usuario dictará en ESPAÑOL.
+1. El "role" debe describir su perfil. Si mezcla español e inglés en su día a día, indícalo.
+2. En "custom_terms" incluye términos técnicos del área, anglicismos que podría pronunciar mezclados con el español, herramientas/tecnologías/plataformas, acrónimos frecuentes.
+Sin descripciones adicionales, solo los términos separados por coma."""
+
+    return base + extra
 
 
 class ProfileGenerateSignals(QObject):
@@ -200,7 +216,7 @@ class ProfileGenerateTask(QRunnable):
         payload = {
             "model": model,
             "messages": [
-                {"role": "system", "content": _PROFILE_PROMPT},
+                {"role": "system", "content": build_profile_prompt(cfg)},
                 {"role": "user",   "content": self.description},
             ],
             "stream": False,
@@ -220,7 +236,7 @@ class ProfileGenerateTask(QRunnable):
         payload = {
             "model": model,
             "messages": [
-                {"role": "system", "content": _PROFILE_PROMPT},
+                {"role": "system", "content": build_profile_prompt(cfg)},
                 {"role": "user",   "content": self.description},
             ],
         }

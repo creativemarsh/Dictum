@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, QTimer, QThreadPool, pyqtSignal, pyqtSlot, QObject, QEvent
 import config
+from core.i18n import t
 
 STYLE_SECTION = """
     QFrame {
@@ -408,7 +409,7 @@ class SettingsTab(QWidget):
         layout.setSpacing(12)
 
         # ── Perfil de usuario ─────────────────────────────────────────────
-        frm_p, play = section("PERFIL DE USUARIO")
+        frm_p, play = section(t("profiles_title"))
 
         # --- bloque: generar con IA ---
         play.addWidget(section_desc(
@@ -433,6 +434,10 @@ class SettingsTab(QWidget):
         self._gen_status.setStyleSheet("font-size: 11px; color: #888780;")
         play.addWidget(self._gen_status)
 
+        self._gen_lang_note = QLabel(t("profile_lang_note"))
+        self._gen_lang_note.setStyleSheet("font-size: 11px; color: #EF9F27;")
+        play.addWidget(self._gen_lang_note)
+
         # separador visual
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
@@ -443,32 +448,32 @@ class SettingsTab(QWidget):
         play.addWidget(section_desc("Gestiona tus perfiles:"))
 
         row_prof_sel = QHBoxLayout()
-        row_prof_sel.addWidget(label("perfil a editar"))
+        row_prof_sel.addWidget(label(t("profile_name")))
         self._setting_profile_combo = NoScrollComboBox()
         self._setting_profile_combo.setStyleSheet(STYLE_COMBO)
         self._setting_profile_combo.currentIndexChanged.connect(self._on_settings_profile_changed)
         row_prof_sel.addWidget(self._setting_profile_combo)
 
-        self._btn_new_prof = QPushButton("+ Nuevo")
+        self._btn_new_prof = QPushButton(t("btn_new_profile"))
         self._btn_new_prof.setStyleSheet(STYLE_BTN)
         self._btn_new_prof.clicked.connect(self._add_profile)
         row_prof_sel.addWidget(self._btn_new_prof)
 
-        self._btn_del_prof = QPushButton("✕ Eliminar")
+        self._btn_del_prof = QPushButton(t("btn_delete"))
         self._btn_del_prof.setStyleSheet(STYLE_BTN)
         self._btn_del_prof.clicked.connect(self._delete_profile)
         row_prof_sel.addWidget(self._btn_del_prof)
         play.addLayout(row_prof_sel)
 
         row_role = QHBoxLayout()
-        row_role.addWidget(label("rol"))
+        row_role.addWidget(label(t("profile_role")))
         self._profile_role = QLineEdit()
         self._profile_role.setStyleSheet(STYLE_INPUT)
         self._profile_role.setPlaceholderText("ej: Cloud Engineer, trabajo con AWS, GCP y Kubernetes")
         row_role.addWidget(self._profile_role)
         play.addLayout(row_role)
 
-        play.addWidget(label("términos técnicos (separados por coma)"))
+        play.addWidget(label(t("profile_terms")))
         self._profile_terms = QTextEdit()
         self._profile_terms.setFixedHeight(68)
         self._profile_terms.setStyleSheet(STYLE_TEXTAREA)
@@ -483,18 +488,17 @@ class SettingsTab(QWidget):
         # ── Proveedor LLM ─────────────────────────────────────────────────
         frm, flay = section("PROVEEDOR DE IA")
         flay.addWidget(section_desc(
-            "El modelo de IA toma el texto crudo de Whisper y lo limpia: "
-            "elimina muletillas, aplica correcciones verbales y respeta tu vocabulario."
+            t("llm_desc")
         ))
 
-        row = QHBoxLayout()
-        row.addWidget(label("proveedor"))
+        row_prov = QHBoxLayout()
+        row_prov.addWidget(label(t("llm_provider")))
         self._provider_combo = NoScrollComboBox()
         self._provider_combo.addItems(["Ollama (local)", "OpenRouter (nube)"])
         self._provider_combo.setStyleSheet(STYLE_COMBO)
         self._provider_combo.currentIndexChanged.connect(self._on_provider_change)
-        row.addWidget(self._provider_combo)
-        flay.addLayout(row)
+        row_prov.addWidget(self._provider_combo)
+        flay.addLayout(row_prov)
         frm_provider = frm
         layout.addWidget(frm_provider)
 
@@ -519,7 +523,7 @@ class SettingsTab(QWidget):
         self._ollama_model_combo.setStyleSheet(STYLE_COMBO)
         self._ollama_model_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         row3.addWidget(self._ollama_model_combo)
-        self._ollama_refresh_btn = QPushButton("↻ refresh")
+        self._ollama_refresh_btn = QPushButton(f"↻ {t('refresh_models')}")
         self._ollama_refresh_btn.setStyleSheet(STYLE_BTN)
         self._ollama_refresh_btn.clicked.connect(self._fetch_ollama_models)
         row3.addWidget(self._ollama_refresh_btn)
@@ -556,7 +560,7 @@ class SettingsTab(QWidget):
         ))
 
         row_key = QHBoxLayout()
-        row_key.addWidget(label("API key"))
+        row_key.addWidget(label(t("api_key")))
         self._or_key = QLineEdit()
         self._or_key.setStyleSheet(STYLE_INPUT)
         self._or_key.setEchoMode(QLineEdit.EchoMode.Password)
@@ -588,7 +592,7 @@ class SettingsTab(QWidget):
         layout.addWidget(self._or_frame)
 
         # ── Whisper ───────────────────────────────────────────────────────
-        frm_w, wlay = section("TRANSCRIPCIÓN (WHISPER)")
+        frm_w, wlay = section(t("transcription_settings"))
         wlay.addWidget(section_desc(
             "Whisper convierte tu voz a texto. "
             "Modo local usa tu GPU (rápido, privado). "
@@ -596,9 +600,9 @@ class SettingsTab(QWidget):
         ))
 
         row_wm = QHBoxLayout()
-        row_wm.addWidget(label("modo"))
+        row_wm.addWidget(label(t("whisper_mode")))
         self._whisper_mode = NoScrollComboBox()
-        self._whisper_mode.addItems(["Local (CUDA)", "API externa"])
+        self._whisper_mode.addItems([t("whisper_local"), t("whisper_api")])
         self._whisper_mode.setStyleSheet(STYLE_COMBO)
         self._whisper_mode.currentIndexChanged.connect(self._on_whisper_mode_change)
         row_wm.addWidget(self._whisper_mode)
@@ -613,9 +617,9 @@ class SettingsTab(QWidget):
         wlay.addLayout(row_ws)
 
         row_dev = QHBoxLayout()
-        row_dev.addWidget(label("dispositivo"))
+        row_dev.addWidget(label(t("whisper_device")))
         self._whisper_device = NoScrollComboBox()
-        self._whisper_device.addItems(["Automático", "CUDA (GPU)", "CPU"])
+        self._whisper_device.addItems([t("whisper_auto"), t("whisper_gpu"), t("whisper_cpu")])
         self._whisper_device.setStyleSheet(STYLE_COMBO)
         row_dev.addWidget(self._whisper_device)
         wlay.addLayout(row_dev)
@@ -641,7 +645,7 @@ class SettingsTab(QWidget):
         api_layout.addLayout(row_wu)
 
         row_wk = QHBoxLayout()
-        row_wk.addWidget(label("API key"))
+        row_wk.addWidget(label(t("api_key")))
         self._whisper_api_key = QLineEdit()
         self._whisper_api_key.setStyleSheet(STYLE_INPUT)
         self._whisper_api_key.setEchoMode(QLineEdit.EchoMode.Password)
@@ -653,27 +657,35 @@ class SettingsTab(QWidget):
         layout.addWidget(frm_w)
 
         # ── Idioma & Hotkey ────────────────────────────────────────────────
-        frm_misc, mlay = section("GENERAL")
+        frm_misc, mlay = section(t("settings_general"))
+
+        row_ui_lang = QHBoxLayout()
+        row_ui_lang.addWidget(label(t("ui_language")))
+        self._ui_lang_combo = NoScrollComboBox()
+        self._ui_lang_combo.setStyleSheet(STYLE_COMBO)
+        self._ui_lang_combo.addItems(["en — English", "es — Español"])
+        row_ui_lang.addWidget(self._ui_lang_combo)
+        mlay.addLayout(row_ui_lang)
 
         row_lang = QHBoxLayout()
-        row_lang.addWidget(label("idioma de dictado"))
+        row_lang.addWidget(label(t("dictation_lang")))
         self._lang_combo = NoScrollComboBox()
         self._lang_combo.setStyleSheet(STYLE_COMBO)
-        self._lang_combo.addItems(["es — Español", "en — English", "pt — Português"])
+        self._lang_combo.addItems(["es — Español", "en — English"])
         row_lang.addWidget(self._lang_combo)
         mlay.addLayout(row_lang)
 
         row_hk = QHBoxLayout()
-        row_hk.addWidget(label("tecla de dictado"))
+        row_hk.addWidget(label(t("hotkey")))
         self._hotkey_capture = KeyCaptureWidget()
         row_hk.addWidget(self._hotkey_capture)
         mlay.addLayout(row_hk)
 
         row_hkm = QHBoxLayout()
-        row_hkm.addWidget(label("modo de activación"))
+        row_hkm.addWidget(label(t("hotkey_mode")))
         self._hotkey_mode = NoScrollComboBox()
         self._hotkey_mode.setStyleSheet(STYLE_COMBO)
-        self._hotkey_mode.addItems(["Mantener presionada", "Un toque (Iniciar/Parar)"])
+        self._hotkey_mode.addItems([t("hotkey_hold"), t("hotkey_toggle")])
         row_hkm.addWidget(self._hotkey_mode)
         mlay.addLayout(row_hkm)
 
@@ -681,7 +693,7 @@ class SettingsTab(QWidget):
         self._auto_paste_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
         mlay.addWidget(self._auto_paste_cb)
 
-        self._play_sounds_cb = QCheckBox(" Reproducir sonidos al grabar y procesar")
+        self._play_sounds_cb = QCheckBox(f" {t('play_sounds')}")
         self._play_sounds_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
         mlay.addWidget(self._play_sounds_cb)
 
@@ -762,8 +774,12 @@ class SettingsTab(QWidget):
         self._hotkey_mode.setCurrentIndex(0 if c.get("hotkey_mode", "hold") == "hold" else 1)
 
         lang = c.get("language", "es")
-        lang_map = {"es": 0, "en": 1, "pt": 2}
+        lang_map = {"es": 0, "en": 1}
         self._lang_combo.setCurrentIndex(lang_map.get(lang, 0))
+
+        ui_lang = c.get("ui_language", "en")
+        ui_lang_map = {"en": 0, "es": 1}
+        self._ui_lang_combo.setCurrentIndex(ui_lang_map.get(ui_lang, 0))
 
         self._auto_paste_cb.setChecked(c.get("auto_paste", False))
         self._play_sounds_cb.setChecked(c.get("play_sounds", True))
@@ -863,8 +879,11 @@ class SettingsTab(QWidget):
 
         cfg["hotkey"] = self._hotkey_capture.get_key()
         cfg["hotkey_mode"] = "hold" if self._hotkey_mode.currentIndex() == 0 else "toggle"
-        lang_map = {0: "es", 1: "en", 2: "pt"}
+        lang_map = {0: "es", 1: "en"}
         cfg["language"] = lang_map.get(self._lang_combo.currentIndex(), "es")
+
+        ui_lang_map = {0: "en", 1: "es"}
+        cfg["ui_language"] = ui_lang_map.get(self._ui_lang_combo.currentIndex(), "en")
 
         cfg["auto_paste"] = self._auto_paste_cb.isChecked()
         cfg["play_sounds"] = self._play_sounds_cb.isChecked()

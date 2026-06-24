@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QPainter, QColor, QPen
 import random
+from core.i18n import t
 
 STYLE_BADGE = """
     QLabel {{
@@ -142,7 +143,7 @@ class TranscribeTab(QWidget):
 
         # ── estado ────────────────────────────────────────────────────────
         row = QHBoxLayout()
-        self._badge = QLabel("esperando")
+        self._badge = QLabel(t("status_waiting"))
         self._badge.setStyleSheet(STYLE_BADGE.format(color="#888780"))
         row.addWidget(self._badge)
         row.addStretch()
@@ -153,7 +154,7 @@ class TranscribeTab(QWidget):
         self._load_profiles()
         row.addWidget(self._profile_combo)
 
-        self._hint = QLabel("Alt para grabar")
+        self._hint = QLabel(f"Alt {t('tray_record_hint')}")
         self._hint.setStyleSheet("font-size: 11px; color: #5f5e5a;")
         row.addWidget(self._hint)
         layout.addLayout(row)
@@ -170,13 +171,13 @@ class TranscribeTab(QWidget):
         out_layout.setContentsMargins(12, 10, 12, 10)
         out_layout.setSpacing(6)
 
-        lbl = QLabel("resultado")
+        lbl = QLabel(t("lbl_result"))
         lbl.setStyleSheet("font-size: 11px; color: #5f5e5a; letter-spacing: 0.05em; text-transform: uppercase;")
         out_layout.addWidget(lbl)
 
         self._output = QTextEdit()
         self._output.setReadOnly(True)
-        self._output.setPlaceholderText("el texto procesado aparece aquí…")
+        self._output.setPlaceholderText(t("placeholder_result"))
         self._output.setMinimumHeight(100)
         self._output.setStyleSheet(self._output_style("#5f5e5a", italic=True))
         out_layout.addWidget(self._output)
@@ -187,13 +188,13 @@ class TranscribeTab(QWidget):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        self._btn_cancel = QPushButton("cancelar")
+        self._btn_cancel = QPushButton(t("btn_cancel"))
         self._btn_cancel.setStyleSheet(STYLE_BTN_CANCEL)
         self._btn_cancel.clicked.connect(self.cancel_clicked)
         self._btn_cancel.setVisible(False)
         btn_row.addWidget(self._btn_cancel)
 
-        self._btn_copy = QPushButton("copiar")
+        self._btn_copy = QPushButton(t("btn_copy"))
         self._btn_copy.setStyleSheet(STYLE_BTN)
         self._btn_copy.clicked.connect(self._copy)
         self._btn_copy.setVisible(False)
@@ -204,7 +205,7 @@ class TranscribeTab(QWidget):
         layout.addLayout(btn_row)
 
         # ── hint tray ─────────────────────────────────────────────────────
-        self._btn_tray = QPushButton("Correr en segundo plano")
+        self._btn_tray = QPushButton(t("btn_tray"))
         self._btn_tray.setStyleSheet(STYLE_BTN)
         self._btn_tray.clicked.connect(self.tray_clicked)
         layout.addWidget(self._btn_tray, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -240,17 +241,17 @@ class TranscribeTab(QWidget):
         cfg = config.load()
         hk = cfg.get("hotkey", "alt")
         lang = cfg.get("language", "es").upper()
-        self._hint.setText(f"{_key_display_name(hk)} para grabar | Idioma: {lang}")
+        self._hint.setText(f"{_key_display_name(hk)} {t('tray_record_hint')} | {t('hint_lang')}: {lang}")
 
     def set_state(self, state: str):
         """state: 'idle' | 'recording' | 'processing' | 'cancelling' | 'done'"""
         self._state = state
         labels = {
-            "idle":        ("esperando",     "#888780", False),
-            "recording":   ("grabando…",     "#E24B4A", True),
-            "processing":  ("procesando…",   "#EF9F27", False),
-            "cancelling":  ("cancelando…",   "#888780", False),
-            "done":        ("listo ✓",       "#639922", False),
+            "idle":        (t("status_idle"),     "#888780", False),
+            "recording":   (t("status_recording"),"#E24B4A", True),
+            "processing":  (t("status_processing"),"#EF9F27", False),
+            "cancelling":  (t("status_canceling"),"#888780", False),
+            "done":        (t("status_done"),     "#639922", False),
         }
         text, color, wave_active = labels.get(state, labels["idle"])
         self._badge.setText(text)
@@ -268,13 +269,13 @@ class TranscribeTab(QWidget):
         
         display_text = text
         if ai_failed:
-            display_text = f"⚠️ Error en IA: {error_msg}\n\nAquí está tu transcripción original:\n-----------------------------------\n{text}"
+            display_text = f"{t('error_ai')}: {error_msg}\n{t('original_text_msg')}\n{text}"
             
         self._output.setPlainText(display_text)
         self._output.setStyleSheet(self._output_style("#e8e6e3"))
         self.set_state("done")
         if ai_failed:
-            self._badge.setText("listo (sin IA) ⚠️")
+            self._badge.setText(t("status_done_no_ai"))
             self._badge.setStyleSheet(STYLE_BADGE.format(color="#EF9F27"))
 
     def show_error(self, msg: str):

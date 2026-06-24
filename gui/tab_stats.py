@@ -5,6 +5,7 @@ Panel de estadísticas de uso.
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QFrame
 from PyQt6.QtCore import Qt
 import config
+from core.i18n import t
 
 STYLE_CARD = """
     QFrame {
@@ -60,12 +61,12 @@ class StatsTab(QWidget):
         grid.setSpacing(8)
 
         specs = [
-            ("words_total",    "✦", "palabras dictadas", "0"),
-            ("wpm",            "⚡", "velocidad prom.",   "0 PPM"),
-            ("time_recorded",  "◷", "tiempo grabado",    "0 min"),
-            ("time_saved",     "◈", "tiempo ahorrado",   "0 min"),
-            ("sessions_total", "◎", "sesiones hoy",      "0"),
-            ("ai_corrections", "✧", "correcciones IA",   "0"),
+            ("words_total",    "✦", t("stat_words"), "0"),
+            ("wpm",            "⚡", t("stat_wpm"),   f"0 {t('stat_wpm_unit')}"),
+            ("time_recorded",  "◷", t("stat_time"),    "0 min"),
+            ("time_saved",     "◈", t("stat_saved"),   "0 min"),
+            ("sessions_total", "◎", t("stat_sessions"),      "0"),
+            ("ai_corrections", "✧", t("stat_ai"),   "0"),
         ]
 
         for i, (key, icon, label, default) in enumerate(specs):
@@ -80,7 +81,7 @@ class StatsTab(QWidget):
         sep.setStyleSheet("background: #2c2c2a; max-height: 1px;")
         layout.addWidget(sep)
 
-        last_lbl = QLabel("última transcripción")
+        last_lbl = QLabel(t("stat_last"))
         last_lbl.setStyleSheet("font-size: 11px; color: #5f5e5a; letter-spacing: 0.05em;")
         layout.addWidget(last_lbl)
 
@@ -125,7 +126,7 @@ class StatsTab(QWidget):
             words_str = str(words)
 
         self._cards["words_total"].set_value(words_str)
-        self._cards["wpm"].set_value(f"{wpm} PPM")
+        self._cards["wpm"].set_value(f"{wpm} {t('stat_wpm_unit')}")
         self._cards["time_recorded"].set_value(time_str)
         self._cards["time_saved"].set_value(saved_str)
         self._cards["sessions_total"].set_value(str(sessions))
