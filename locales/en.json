@@ -148,5 +148,6 @@
   "tray_hidden_title": "Dictum is still running",
   "tray_hidden_msg": "It keeps listening for {key} in the background. Use the tray icon to open it or quit.",
   "today": "Today",
-  "yesterday": "Yesterday"
+  "yesterday": "Yesterday",
+  "stat_saved_sub": "compared with typing it at 40 words per minute · {words} words dictated"
 }

@@ -4,25 +4,26 @@ Paleta, hoja de estilos global e iconos dibujados de Dictum.
 """
 import sys
 
-from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtCore import Qt, QRectF, QPointF
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPixmap, QPen
 
 # ── paleta ───────────────────────────────────────────────────────────────────
-BG        = "#1a1a1f"   # fondo de ventana
-SURFACE   = "#111116"   # tarjetas
-INPUT     = "#0d0d12"   # campos de texto
-BORDER    = "#2c2c2a"
-BORDER_HI = "#444441"
-TEXT      = "#e8e6e3"
-TEXT_2    = "#b4b2a9"
-MUTED     = "#888780"
-FAINT     = "#5f5e5a"
-ACCENT    = "#534AB7"
-ACCENT_HI = "#6358c8"
-RED       = "#E24B4A"
-ORANGE    = "#EF9F27"
-GREEN     = "#639922"
-GREEN_HI  = "#97C459"
+BG        = "#0f1014"   # fondo de ventana
+SURFACE   = "#17181d"   # tarjetas
+SURFACE_2 = "#1f2027"   # elementos elevados / hover
+INPUT     = "#121318"   # campos de texto
+BORDER    = "#262730"
+BORDER_HI = "#34353f"
+TEXT      = "#ececf1"
+TEXT_2    = "#b9bac4"
+MUTED     = "#8a8b98"
+FAINT     = "#5d5e6b"
+ACCENT    = "#7c6cf6"
+ACCENT_HI = "#9184ff"
+RED       = "#f25f5c"
+ORANGE    = "#f5a524"
+GREEN     = "#3ecf8e"
+GREEN_HI  = "#6ee7b0"
 
 STATE_COLORS = {
     "idle":       ACCENT,
@@ -39,25 +40,29 @@ QMainWindow, QWidget {{
 }}
 QTabWidget::pane {{
     border: none;
+    border-top: 1px solid {BORDER};
     background: {BG};
+}}
+QTabWidget::tab-bar {{
+    left: 12px;
 }}
 QTabBar {{
     qproperty-drawBase: 0;
-    background: {SURFACE};
-    border-bottom: 1px solid {BORDER};
+    background: transparent;
 }}
 QTabBar::tab {{
     background: transparent;
     color: {MUTED};
-    padding: 10px 16px 9px 16px;
+    padding: 6px 11px;
+    margin: 10px 1px 10px 1px;
     border: none;
-    border-bottom: 2px solid transparent;
+    border-radius: 8px;
     font-size: 12px;
+    font-weight: 600;
 }}
 QTabBar::tab:selected {{
+    background: {SURFACE_2};
     color: {TEXT};
-    border-bottom: 2px solid {ACCENT};
-    font-weight: 600;
 }}
 QTabBar::tab:hover:!selected {{
     color: {TEXT_2};
@@ -156,6 +161,28 @@ QDialog QLineEdit:focus {{
 """
 
 
+def draw_mic(p: QPainter, rect: QRectF, color: QColor) -> None:
+    """Dibuja un micrófono centrado en rect (diseñado sobre una rejilla de 64)."""
+    s = rect.width() / 64.0
+    ox, oy = rect.x(), rect.y()
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(color)
+    p.drawRoundedRect(QRectF(ox + 25 * s, oy + 13 * s, 14 * s, 24 * s), 7 * s, 7 * s)
+    pen = QPen(color, 3.6 * s)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    p.setPen(pen)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    arc_rect = QRectF(ox + 19 * s, oy + 18 * s, 26 * s, 24 * s)
+    arc = QPainterPath()
+    arc.arcMoveTo(arc_rect, 180)
+    arc.arcTo(arc_rect, 180, 180)
+    p.drawPath(arc)
+    p.drawLine(QPointF(ox + 32 * s, oy + 42 * s), QPointF(ox + 32 * s, oy + 49 * s))
+    p.drawLine(QPointF(ox + 25 * s, oy + 50 * s), QPointF(ox + 39 * s, oy + 50 * s))
+    p.restore()
+
+
 def app_icon(state: str = "idle", size: int = 64) -> QIcon:
     """Icono de Dictum: un micrófono blanco sobre un círculo del color del estado."""
     pm = QPixmap(size, size)
@@ -163,26 +190,10 @@ def app_icon(state: str = "idle", size: int = 64) -> QIcon:
     p = QPainter(pm)
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     s = size / 64.0
-
     p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(QColor(STATE_COLORS.get(state, ACCENT)))
     p.drawEllipse(QRectF(2 * s, 2 * s, 60 * s, 60 * s))
-
-    white = QColor("#ffffff")
-    # cápsula del micrófono
-    p.setBrush(white)
-    p.drawRoundedRect(QRectF(25 * s, 13 * s, 14 * s, 24 * s), 7 * s, 7 * s)
-    # soporte en U + pie
-    pen = QPen(white, 3.6 * s)
-    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    p.setPen(pen)
-    p.setBrush(Qt.BrushStyle.NoBrush)
-    arc = QPainterPath()
-    arc.arcMoveTo(QRectF(19 * s, 18 * s, 26 * s, 24 * s), 180)
-    arc.arcTo(QRectF(19 * s, 18 * s, 26 * s, 24 * s), 180, 180)
-    p.drawPath(arc)
-    p.drawLine(int(32 * s), int(42 * s), int(32 * s), int(49 * s))
-    p.drawLine(int(25 * s), int(50 * s), int(39 * s), int(50 * s))
+    draw_mic(p, QRectF(0, 0, size, size), QColor("#ffffff"))
     p.end()
     return QIcon(pm)
 
@@ -202,7 +213,7 @@ def apply_dark_title_bar(widget) -> None:
             if dwm.DwmSetWindowAttribute(hwnd, attr, ctypes.byref(on), ctypes.sizeof(on)) == 0:
                 break
         # 35 = DWMWA_CAPTION_COLOR (solo Windows 11), formato COLORREF 0x00BBGGRR
-        c = QColor(SURFACE)
+        c = QColor(BG)
         colorref = ctypes.c_int(c.red() | (c.green() << 8) | (c.blue() << 16))
         dwm.DwmSetWindowAttribute(hwnd, 35, ctypes.byref(colorref), ctypes.sizeof(colorref))
     except Exception:

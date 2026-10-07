@@ -148,5 +148,6 @@
   "tray_hidden_title": "Dictum sigue funcionando",
   "tray_hidden_msg": "Sigue escuchando {key} en segundo plano. Usa el icono de la bandeja para abrirlo o salir.",
   "today": "Hoy",
-  "yesterday": "Ayer"
+  "yesterday": "Ayer",
+  "stat_saved_sub": "frente a escribirlo a 40 palabras por minuto · {words} palabras dictadas"
 }

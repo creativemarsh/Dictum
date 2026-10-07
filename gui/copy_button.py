@@ -13,12 +13,12 @@ from core.i18n import t
 
 STYLE_COPIED = """
     QPushButton {{
-        background: #1a2410;
-        border: 1px solid #639922;
+        background: #11261d;
+        border: 1px solid #3ecf8e;
         border-radius: 6px;
         padding: {padding};
         font-size: {font_size};
-        color: #97C459;
+        color: #6ee7b0;
     }}
 """
 

@@ -2,19 +2,18 @@
 tab_transcribe.py
 Tab principal: estado, waveform animado, resultado y botones.
 """
-import random
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QFrame, QTextEdit,
+    QPushButton, QFrame, QTextEdit, QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QPainter, QColor
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QColor
 
 import config
 from core.i18n import t
 from gui import theme
 from gui.copy_button import CopyButton
+from gui.widgets import MicButton
 
 STYLE_BADGE = """
     QLabel {{
@@ -64,8 +63,8 @@ STYLE_BTN_CANCEL = f"""
         font-size: 12px;
         color: {theme.RED};
     }}
-    QPushButton:hover {{ background: #2c1a1a; color: #ff6b6a; }}
-    QPushButton:pressed {{ background: #3c2a2a; }}
+    QPushButton:hover {{ background: #2a1719; color: #ff8a87; }}
+    QPushButton:pressed {{ background: #3a1d20; }}
 """
 
 STYLE_CARD = f"""
@@ -109,8 +108,8 @@ BADGES = {
 
 # colores de los avisos: (fondo, borde, texto)
 BANNERS = {
-    "warning": ("#2a2112", "#5c4416", "#F2B85B"),
-    "error":   ("#2a1515", "#5c2323", "#F08584"),
+    "warning": ("#2a2112", "#5c4416", "#f7c35f"),
+    "error":   ("#2a1719", "#5e2629", "#ff8f8c"),
 }
 
 
@@ -119,77 +118,15 @@ def _tinted(color: str, alpha: int) -> str:
     return f"rgba({c.red()}, {c.green()}, {c.blue()}, {alpha})"
 
 
-class WaveformWidget(QWidget):
-    """Waveform animado — barras que suben/bajan según el nivel de audio."""
-
-    BAR_COUNT = 24
-    BAR_W     = 3
-    GAP       = 3
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedHeight(56)
-        self._levels = [0.0] * self.BAR_COUNT
-        self._active = False
-        self._target = 0.0
-        self._color = QColor(theme.RED)
-
-        # solo anima mientras graba (o mientras las barras vuelven a reposo)
-        self._timer = QTimer(self)
-        self._timer.setInterval(50)
-        self._timer.timeout.connect(self._animate)
-
-    def set_active(self, active: bool):
-        self._active = active
-        if not active:
-            self._target = 0.0
-        self._timer.start()
-
-    def set_level(self, rms: float):
-        self._target = rms
-
-    def _animate(self):
-        if self._active:
-            for i in range(self.BAR_COUNT):
-                noise  = random.uniform(0.3, 1.0)
-                target = self._target * noise
-                self._levels[i] += (target - self._levels[i]) * 0.4
-        else:
-            for i in range(self.BAR_COUNT):
-                self._levels[i] *= 0.7
-            if max(self._levels) < 0.01:
-                self._timer.stop()
-        self.update()
-
-    def paintEvent(self, event):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w = self.width()
-        h = self.height()
-        total_w = self.BAR_COUNT * self.BAR_W + (self.BAR_COUNT - 1) * self.GAP
-        x0 = (w - total_w) // 2
-        p.setPen(Qt.PenStyle.NoPen)
-
-        for i, lvl in enumerate(self._levels):
-            bar_h = max(4, int(lvl * (h - 8)))
-            x = x0 + i * (self.BAR_W + self.GAP)
-            y = (h - bar_h) // 2
-            if self._active:
-                c = QColor(self._color)
-                c.setAlphaF(0.55 + 0.45 * min(1.0, lvl * 2))
-            else:
-                c = QColor(theme.BORDER_HI)
-            p.setBrush(c)
-            p.drawRoundedRect(x, y, self.BAR_W, bar_h, 1.5, 1.5)
-
-
 class TranscribeTab(QWidget):
     cancel_clicked = pyqtSignal()
+    mic_clicked    = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._state = "idle"
         self._result_text = ""
+        self._pasted = False
         self._setup_ui()
 
     def _setup_ui(self):
@@ -220,16 +157,17 @@ class TranscribeTab(QWidget):
         hero.setObjectName("card")
         hero.setStyleSheet(STYLE_CARD)
         hlay = QVBoxLayout(hero)
-        hlay.setContentsMargins(16, 14, 16, 14)
-        hlay.setSpacing(4)
+        hlay.setContentsMargins(16, 4, 16, 12)
+        hlay.setSpacing(2)
 
-        self._wave = WaveformWidget()
-        hlay.addWidget(self._wave)
+        self._mic = MicButton()
+        self._mic.clicked.connect(self.mic_clicked)
+        hlay.addWidget(self._mic, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self._hint = QLabel()
         self._hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._hint.setWordWrap(True)
-        self._hint.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {theme.TEXT};")
+        self._hint.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {theme.TEXT};")
         hlay.addWidget(self._hint)
 
         self._subhint = QLabel()
@@ -248,6 +186,8 @@ class TranscribeTab(QWidget):
         self._btn_cancel.setSizePolicy(sp)
         hlay.addSpacing(6)
         hlay.addWidget(self._btn_cancel, alignment=Qt.AlignmentFlag.AlignCenter)
+        # altura fija: si falta espacio cede la tarjeta del resultado, no esta
+        hero.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout.addWidget(hero)
 
         # ── aviso / error (separado del texto) ────────────────────────────
@@ -279,7 +219,7 @@ class TranscribeTab(QWidget):
         self._output = QTextEdit()
         self._output.setPlaceholderText(t("placeholder_result"))
         self._output.setToolTip(t("result_editable"))
-        self._output.setMinimumHeight(90)
+        self._output.setMinimumHeight(48)
         self._output.setStyleSheet(STYLE_OUTPUT)
         self._output.setReadOnly(True)
         out_layout.addWidget(self._output)
@@ -304,8 +244,8 @@ class TranscribeTab(QWidget):
             "recording":  t("hint_press_again" if toggle else "hint_release"),
             "processing": t("hint_processing"),
             "cancelling": t("hint_processing"),
-            "done":       t("hint_pasted" if cfg.get("auto_paste") else "hint_done"),
-            "done_no_ai": t("hint_pasted" if cfg.get("auto_paste") else "hint_done"),
+            "done":       t("hint_pasted" if self._pasted else "hint_done"),
+            "done_no_ai": t("hint_pasted" if self._pasted else "hint_done"),
         }
         self._hint.setText(hints.get(self._state, hints["idle"]).format(key=key))
 
@@ -323,7 +263,7 @@ class TranscribeTab(QWidget):
         self._badge.setStyleSheet(STYLE_BADGE.format(
             bg=_tinted(color, 28), border=_tinted(color, 90), color=color))
 
-        self._wave.set_active(state == "recording")
+        self._mic.set_state(state)
         self._btn_cancel.setVisible(state in ("recording", "processing"))
         self._btn_copy.setVisible(state in ("done", "done_no_ai"))
         self._btn_copy.reset()
@@ -333,10 +273,11 @@ class TranscribeTab(QWidget):
 
     @pyqtSlot(float)
     def update_level(self, rms: float):
-        self._wave.set_level(rms)
+        self._mic.set_level(rms)
 
-    def set_result(self, text: str, ai_failed: bool = False, error_msg: str = ""):
+    def set_result(self, text: str, ai_failed: bool = False, error_msg: str = "", pasted: bool = False):
         self._result_text = text
+        self._pasted = pasted
         self._output.setPlainText(text)
         self._output.setReadOnly(False)
         if ai_failed:

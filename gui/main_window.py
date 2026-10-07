@@ -38,8 +38,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Dictum")
         self.setMinimumWidth(380)
-        self.setMinimumHeight(480)
-        self.resize(440, 560)
+        self.setMinimumHeight(520)
+        self.resize(440, 600)
         self.setStyleSheet(theme.STYLE)
         self.setWindowIcon(theme.app_icon())
         self._tray_hint_shown = False
@@ -131,6 +131,7 @@ class MainWindow(QMainWindow):
 
         # cancel button
         self._tab_transcribe.cancel_clicked.connect(self._on_cancel)
+        self._tab_transcribe.mic_clicked.connect(self._on_mic_clicked)
 
         # settings saved
         self._tab_settings.saved.connect(self._on_settings_saved)
@@ -201,6 +202,14 @@ class MainWindow(QMainWindow):
             self._recorder.stop_recording()
 
     @pyqtSlot()
+    def _on_mic_clicked(self):
+        """El botón grande funciona siempre como interruptor: empezar / terminar."""
+        if self._recorder.is_recording():
+            self._recorder.stop_recording()
+        elif not self._busy:
+            self._recorder.start_recording()
+
+    @pyqtSlot()
     def _on_cancel(self):
         if not self._busy:
             return
@@ -269,7 +278,10 @@ class MainWindow(QMainWindow):
     @pyqtSlot(str)
     def _on_result_ready(self, text: str, ai_failed: bool = False, error_msg: str = ""):
         self._reset_busy()
-        self._tab_transcribe.set_result(text, ai_failed=ai_failed, error_msg=error_msg)
+        # Si Dictum es la ventana activa (se dictó con el botón), Ctrl+V pegaría
+        # el texto dentro de la propia app: en ese caso basta con el portapapeles.
+        auto_paste = config.load().get("auto_paste", False) and not self.isActiveWindow()
+        self._tab_transcribe.set_result(text, ai_failed=ai_failed, error_msg=error_msg, pasted=auto_paste)
         history.save(text)
         self._tab_history.refresh()
         word_count = len(text.split())
@@ -279,8 +291,6 @@ class MainWindow(QMainWindow):
         self._tab_stats.refresh()
         pyperclip.copy(text)
 
-        cfg = config.load()
-        auto_paste = cfg.get("auto_paste", False)
         if ai_failed:
             self._set_state("done_no_ai", error_msg.splitlines()[0] if error_msg else "")
         else:
