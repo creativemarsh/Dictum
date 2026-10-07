@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
 - The Whisper model is loaded once and reused between dictations instead of
   being reloaded every time (much faster transcriptions after the first one)
 - Accidental taps of the hotkey (< 0.35 s) are ignored instead of being sent
-  to Whisper
+  to Whisper or reported as "no audio captured"
 - Cancelling is immediate: results that arrive after a cancel are discarded
 - Feedback sounds no longer freeze the UI, and no longer crash on non-Windows systems
 - Tray icon is now a round dot
@@ -35,6 +35,8 @@ All notable changes to this project will be documented in this file.
 - Labels inside cards and settings sections were drawn with their own border box
 - "AI corrections" stat was incremented even when the AI step failed
 - Statistics were refreshed before the new words were counted
+- An empty reply from the LLM was copied as an empty result; it now falls
+  back to the raw transcription
 - Clicking "Refresh models" twice while Ollama was slow could crash the app
   (its background thread was destroyed while still running)
 

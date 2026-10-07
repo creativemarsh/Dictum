@@ -241,6 +241,8 @@ class TranscribeTab(QWidget):
         hk = cfg.get("hotkey", "alt")
         lang = cfg.get("language", "es").upper()
         self._hint.setText(f"{_key_display_name(hk)} {t('tray_record_hint')} | {t('hint_lang')}: {lang}")
+        cancel = t("btn_cancel")
+        self._btn_cancel.setText(f"{cancel} (Esc)" if cfg.get("esc_cancels", True) else cancel)
 
     def set_state(self, state: str):
         """state: 'idle' | 'recording' | 'processing' | 'cancelling' | 'done'"""

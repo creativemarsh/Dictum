@@ -209,6 +209,13 @@ class DictationFlowTest(unittest.TestCase):
         self.assertFalse(self.w._busy)
         self.assertEqual(_clipboard, [])
 
+    def test_tap_without_audio_is_not_an_error(self):
+        self.w._on_hotkey_pressed()
+        self.w._recorder.stop_recording()   # antes de que llegue ningún bloque
+        spin(50)
+        self.assertFalse(self.w._busy)
+        self.assertNotEqual(self.ov._state, "error")
+
     def test_empty_transcription_reports_no_speech(self):
         self.fake_backends(raw="   ")
         self.record()
@@ -277,6 +284,17 @@ class ConfigTest(unittest.TestCase):
         cfg = config.load()
         self.assertEqual(config.get_active_profile(cfg)["custom_terms"], "ECG")
         self.assertNotIn("user_profile", json.loads(config.CONFIG_PATH.read_text(encoding="utf-8")))
+
+    def test_empty_llm_response_is_an_error(self):
+        from core.rewriter import RewriteSignals, RewriteTask
+        sigs = RewriteSignals()
+        got = []
+        sigs.done.connect(lambda text: got.append(("done", text)))
+        sigs.error.connect(lambda msg: got.append(("error", msg)))
+        task = RewriteTask("hola", sigs)
+        task._ollama = lambda cfg: "   \n"
+        task.run()
+        self.assertEqual(got[0][0], "error")
 
     def test_defaults_are_not_shared_between_loads(self):
         a = config.load()

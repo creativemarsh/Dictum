@@ -24,6 +24,8 @@ Speak naturally — with filler words, hesitations, self-corrections — and Dic
 - 👤 **Custom profiles** — tell Dictum your profession and technical terms so the AI doesn't mangle them
 - 🔇 **Silent background mode** — runs without a terminal window via `Dictum.bat`
 - 📋 **Clipboard integration** — processed text is always one `Ctrl+V` away
+- 🫧 **Floating indicator** — a small always-on-top pill shows when Dictum is recording, processing or done, so you don't need the main window open
+- ⎋ **Esc to cancel** — press Escape anywhere to throw away the current dictation
 - 🔒 **Privacy-first** — fully local setup possible with Ollama + faster-whisper
 
 ---

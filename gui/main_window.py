@@ -321,6 +321,11 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(str)
     def _on_recorder_error(self, msg: str):
+        if self._busy and time.monotonic() - self._record_start < MIN_RECORDING_S:
+            # toque accidental tan corto que no llegó ni un bloque de audio
+            self._reset_busy()
+            self._set_state("idle")
+            return
         self._fail(msg)
 
     @pyqtSlot(str)

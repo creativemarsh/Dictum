@@ -76,7 +76,10 @@ class RewriteTask(QRunnable):
                 result = self._ollama(cfg)
             else:
                 result = self._openrouter(cfg)
-            self.signals.done.emit(result.strip())
+            result = result.strip()
+            if not result:
+                raise ValueError("El modelo devolvió una respuesta vacía.")
+            self.signals.done.emit(result)
         except Exception as e:
             self.signals.error.emit(str(e))
 
