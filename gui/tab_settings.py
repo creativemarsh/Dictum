@@ -137,29 +137,30 @@ def label(text: str) -> QLabel:
 
 
 def _key_display_name(name: str) -> str:
+    left, right = t("key_left"), t("key_right")
     _NAMES = {
-        'left alt':    'Alt Izquierdo',
-        'right alt':   'Alt Derecho',
-        'left ctrl':   'Ctrl Izquierdo',
-        'right ctrl':  'Ctrl Derecho',
-        'left shift':  'Shift Izquierdo',
-        'right shift': 'Shift Derecho',
+        'left alt':    left.format(k='Alt'),
+        'right alt':   right.format(k='Alt'),
+        'left ctrl':   left.format(k='Ctrl'),
+        'right ctrl':  right.format(k='Ctrl'),
+        'left shift':  left.format(k='Shift'),
+        'right shift': right.format(k='Shift'),
         'alt':   'Alt',   'ctrl':  'Ctrl',  'shift': 'Shift',
-        'caps lock':   'Bloq Mayús',
-        'space':       'Espacio',
+        'caps lock':   t("key_caps_lock"),
+        'space':       t("key_space"),
         'tab':         'Tab',
         'esc':         'Escape',
         'insert':      'Insert',
-        'delete':      'Supr',
-        'home':        'Inicio',
-        'end':         'Fin',
-        'page up':     'Re Pág',
-        'page down':   'Av Pág',
-        'left windows':  'Win Izq',
-        'right windows': 'Win Der',
+        'delete':      t("key_delete"),
+        'home':        t("key_home"),
+        'end':         t("key_end"),
+        'page up':     t("key_page_up"),
+        'page down':   t("key_page_down"),
+        'left windows':  left.format(k='Win'),
+        'right windows': right.format(k='Win'),
         'windows': 'Windows',
-        'menu':    'Menú',
-        'pause':   'Pausa',
+        'menu':    t("key_menu"),
+        'pause':   t("key_pause"),
         **{f'f{i}': f'F{i}' for i in range(1, 13)},
     }
     return _NAMES.get(name.lower(), name.upper() if len(name) == 1 else name.title())
@@ -199,7 +200,7 @@ class KeyCaptureWidget(QWidget):
         self._display.setStyleSheet(STYLE_KEY_LABEL)
         lay.addWidget(self._display)
 
-        self._btn = QPushButton('Capturar')
+        self._btn = QPushButton(t("btn_capture"))
         self._btn.setStyleSheet(STYLE_BTN)
         self._btn.setFixedWidth(90)
         self._btn.clicked.connect(self._toggle)
@@ -224,9 +225,9 @@ class KeyCaptureWidget(QWidget):
 
     def _start_capture(self):
         self._capturing = True
-        self._display.setText('esperando tecla…')
+        self._display.setText(t("waiting_key"))
         self._display.setStyleSheet(STYLE_KEY_LABEL_ACTIVE)
-        self._btn.setText('✕ Cancelar')
+        self._btn.setText(f"✕ {t('btn_cancel_capture')}")
         
         from PyQt6.QtWidgets import QApplication
         self._filter = KeyFilter(self)
@@ -242,7 +243,7 @@ class KeyCaptureWidget(QWidget):
                 self._filter = None
         self._display.setStyleSheet(STYLE_KEY_LABEL)
         self._display.setText(_key_display_name(self._current_key))
-        self._btn.setText('Capturar')
+        self._btn.setText(t("btn_capture"))
 
     def _on_captured_key(self, key: int, text: str, nvk: int, nsc: int):
         import sys
@@ -334,7 +335,7 @@ class KeyCaptureWidget(QWidget):
         self._current_key = key_name
         self._display.setStyleSheet(STYLE_KEY_LABEL)
         self._display.setText(_key_display_name(key_name))
-        self._btn.setText('Capturar')
+        self._btn.setText(t("btn_capture"))
         self.key_changed.emit(key_name)
 
     def hideEvent(self, event):
@@ -363,11 +364,11 @@ class CudaChecker(QObject):
         try:
             import ctranslate2
             if ctranslate2.get_cuda_device_count() > 0:
-                self.result.emit("CUDA disponible (vía CTranslate2)", "#639922")
+                self.result.emit(t("cuda_ok"), "#639922")
             else:
-                self.result.emit("CUDA no disponible — se usará CPU", "#EF9F27")
+                self.result.emit(t("cuda_cpu"), "#EF9F27")
         except Exception as e:
-            self.result.emit(f"CUDA no disponible: {e}", "#E24B4A")
+            self.result.emit(f"{t('cuda_error')}: {e}", "#E24B4A")
 
 
 class OllamaFetcher(QObject):
@@ -395,6 +396,7 @@ class SettingsTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._cfg = config.load()
+        self._workers: set = set()
         self._setup_ui()
         self._load_values()
 
@@ -414,17 +416,17 @@ class SettingsTab(QWidget):
 
         # --- bloque: generar con IA ---
         play.addWidget(section_desc(
-            "Describí tu trabajo y la IA generará el rol y los términos técnicos automáticamente."
+            t("profile_gen_desc")
         ))
 
         gen_row = QHBoxLayout()
         self._gen_input = QLineEdit()
         self._gen_input.setStyleSheet(STYLE_INPUT)
         self._gen_input.setPlaceholderText(
-            "ej: \"Cloud Engineer\" o \"DevOps en startup, pipelines CI/CD en GCP y AWS\""
+            t("profile_gen_placeholder")
         )
         gen_row.addWidget(self._gen_input)
-        self._gen_btn = QPushButton("✨ Generar perfil")
+        self._gen_btn = QPushButton(f"✨ {t('btn_generate_profile')}")
         self._gen_btn.setStyleSheet(STYLE_BTN_PRIMARY)
         self._gen_btn.clicked.connect(self._generate_profile)
         gen_row.addWidget(self._gen_btn)
@@ -445,7 +447,7 @@ class SettingsTab(QWidget):
         play.addWidget(sep)
 
         # --- bloque: edición manual ---
-        play.addWidget(section_desc("Gestiona tus perfiles:"))
+        play.addWidget(section_desc(t("profiles_manage")))
 
         row_prof_sel = QHBoxLayout()
         row_prof_sel.addWidget(label(t("profile_name")))
@@ -469,7 +471,7 @@ class SettingsTab(QWidget):
         row_role.addWidget(label(t("profile_role")))
         self._profile_role = QLineEdit()
         self._profile_role.setStyleSheet(STYLE_INPUT)
-        self._profile_role.setPlaceholderText("ej: Cloud Engineer, trabajo con AWS, GCP y Kubernetes")
+        self._profile_role.setPlaceholderText(t("profile_role_placeholder"))
         row_role.addWidget(self._profile_role)
         play.addLayout(row_role)
 
@@ -486,7 +488,7 @@ class SettingsTab(QWidget):
         layout.addWidget(frm_p)
 
         # ── Proveedor LLM ─────────────────────────────────────────────────
-        frm, flay = section("PROVEEDOR DE IA")
+        frm, flay = section(t("llm_section"))
         flay.addWidget(section_desc(
             t("llm_desc")
         ))
@@ -494,7 +496,7 @@ class SettingsTab(QWidget):
         row_prov = QHBoxLayout()
         row_prov.addWidget(label(t("llm_provider")))
         self._provider_combo = NoScrollComboBox()
-        self._provider_combo.addItems(["Ollama (local)", "OpenRouter (nube)"])
+        self._provider_combo.addItems(["Ollama (local)", f"OpenRouter ({t('cloud')})"])
         self._provider_combo.setStyleSheet(STYLE_COMBO)
         self._provider_combo.currentIndexChanged.connect(self._on_provider_change)
         row_prov.addWidget(self._provider_combo)
@@ -505,12 +507,11 @@ class SettingsTab(QWidget):
         # ── Ollama ────────────────────────────────────────────────────────
         self._ollama_frame, olay = section("OLLAMA")
         olay.addWidget(section_desc(
-            "Corre modelos localmente en tu PC. Gratis, sin enviar datos a internet. "
-            "Requiere GPU con ≥ 6 GB de VRAM o una CPU potente."
+            t("ollama_desc")
         ))
 
         row2 = QHBoxLayout()
-        row2.addWidget(label("URL base"))
+        row2.addWidget(label(t("ollama_url")))
         self._ollama_url = QLineEdit()
         self._ollama_url.setStyleSheet(STYLE_INPUT)
         self._ollama_url.setPlaceholderText("http://localhost:11434")
@@ -518,7 +519,7 @@ class SettingsTab(QWidget):
         olay.addLayout(row2)
 
         row3 = QHBoxLayout()
-        row3.addWidget(label("modelo"))
+        row3.addWidget(label(t("model")))
         self._ollama_model_combo = NoScrollComboBox()
         self._ollama_model_combo.setStyleSheet(STYLE_COMBO)
         self._ollama_model_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -534,7 +535,7 @@ class SettingsTab(QWidget):
         olay.addWidget(self._ollama_status)
 
         # instalar modelo
-        olay.addWidget(label("instalar modelo (ejecuta en tu terminal):"))
+        olay.addWidget(label(t("ollama_install")))
         self._ollama_install_combo = NoScrollComboBox()
         self._ollama_install_combo.setStyleSheet(STYLE_COMBO)
         self._ollama_install_combo.addItems([
@@ -555,8 +556,7 @@ class SettingsTab(QWidget):
         # ── OpenRouter ────────────────────────────────────────────────────
         self._or_frame, orlay = section("OPENROUTER")
         orlay.addWidget(section_desc(
-            "Acceso a modelos en la nube vía API. Los modelos marcados \":free\" "
-            "son gratuitos pero pueden tener límites de velocidad."
+            t("openrouter_desc")
         ))
 
         row_key = QHBoxLayout()
@@ -569,7 +569,7 @@ class SettingsTab(QWidget):
         orlay.addLayout(row_key)
 
         row_model = QHBoxLayout()
-        row_model.addWidget(label("modelo"))
+        row_model.addWidget(label(t("model")))
         self._or_model_combo = NoScrollComboBox()
         self._or_model_combo.setStyleSheet(STYLE_COMBO)
         for m in config.OPENROUTER_FREE_MODELS:
@@ -578,12 +578,12 @@ class SettingsTab(QWidget):
             self._or_model_combo.addItem(custom_m, userData=custom_m)
         row_model.addWidget(self._or_model_combo)
         
-        self._btn_add_or = QPushButton("+ Nuevo")
+        self._btn_add_or = QPushButton(f"+ {t('btn_new')}")
         self._btn_add_or.setStyleSheet(STYLE_BTN)
         self._btn_add_or.clicked.connect(self._add_or_model)
         row_model.addWidget(self._btn_add_or)
         
-        self._btn_del_or = QPushButton("✕ Quitar")
+        self._btn_del_or = QPushButton(f"✕ {t('btn_remove')}")
         self._btn_del_or.setStyleSheet(STYLE_BTN)
         self._btn_del_or.clicked.connect(self._del_or_model)
         row_model.addWidget(self._btn_del_or)
@@ -594,9 +594,7 @@ class SettingsTab(QWidget):
         # ── Whisper ───────────────────────────────────────────────────────
         frm_w, wlay = section(t("transcription_settings"))
         wlay.addWidget(section_desc(
-            "Whisper convierte tu voz a texto. "
-            "Modo local usa tu GPU (rápido, privado). "
-            "Modo API usa Groq Whisper en la nube (gratis con límite de tasa)."
+            t("whisper_desc")
         ))
 
         row_wm = QHBoxLayout()
@@ -609,7 +607,7 @@ class SettingsTab(QWidget):
         wlay.addLayout(row_wm)
 
         row_ws = QHBoxLayout()
-        row_ws.addWidget(label("modelo local"))
+        row_ws.addWidget(label(t("whisper_model")))
         self._whisper_size = NoScrollComboBox()
         self._whisper_size.addItems(["tiny", "base", "small", "medium", "large-v2"])
         self._whisper_size.setStyleSheet(STYLE_COMBO)
@@ -624,7 +622,7 @@ class SettingsTab(QWidget):
         row_dev.addWidget(self._whisper_device)
         wlay.addLayout(row_dev)
 
-        self._cuda_status = QLabel("verificando CUDA…")
+        self._cuda_status = QLabel(t("cuda_checking"))
         self._cuda_status.setStyleSheet("font-size: 11px; color: #888780;")
         wlay.addWidget(self._cuda_status)
         self._check_cuda()
@@ -636,7 +634,7 @@ class SettingsTab(QWidget):
         api_layout.setSpacing(8)
 
         row_wu = QHBoxLayout()
-        row_wu.addWidget(label("proveedor API"))
+        row_wu.addWidget(label(t("api_provider")))
         self._whisper_api_combo = NoScrollComboBox()
         self._whisper_api_combo.setStyleSheet(STYLE_COMBO)
         for w in config.WHISPER_API_FREE:
@@ -689,7 +687,7 @@ class SettingsTab(QWidget):
         row_hkm.addWidget(self._hotkey_mode)
         mlay.addLayout(row_hkm)
 
-        self._auto_paste_cb = QCheckBox(" Pegar automáticamente al terminar (Ctrl+V)")
+        self._auto_paste_cb = QCheckBox(f" {t('auto_paste')}")
         self._auto_paste_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
         mlay.addWidget(self._auto_paste_cb)
 
@@ -708,7 +706,7 @@ class SettingsTab(QWidget):
         layout.addWidget(frm_misc)
 
         # ── Guardar ────────────────────────────────────────────────────────
-        save_btn = QPushButton("guardar ajustes")
+        save_btn = QPushButton(t("btn_save_settings"))
         save_btn.setStyleSheet(STYLE_BTN_PRIMARY)
         save_btn.clicked.connect(self._save)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
@@ -798,14 +796,26 @@ class SettingsTab(QWidget):
 
     # ── slots ──────────────────────────────────────────────────────────────
 
+    def _run_worker(self, worker: QObject, start, finished_signals) -> QThread:
+        """Ejecuta worker.start en un hilo propio. Se guarda una referencia a
+        hilo y worker hasta que terminan: si se soltaran antes (p.ej. al pulsar
+        "refrescar" dos veces seguidas), Qt los destruiría en plena ejecución."""
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(start)
+        for sig in finished_signals:
+            sig.connect(thread.quit)
+        pair = (thread, worker)
+        self._workers.add(pair)
+        thread.finished.connect(lambda: self._workers.discard(pair))
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+        return thread
+
     def _check_cuda(self):
-        self._cuda_thread = QThread()
-        self._cuda_checker = CudaChecker()
-        self._cuda_checker.moveToThread(self._cuda_thread)
-        self._cuda_thread.started.connect(self._cuda_checker.check)
-        self._cuda_checker.result.connect(self._on_cuda_result)
-        self._cuda_checker.result.connect(self._cuda_thread.quit)
-        self._cuda_thread.start()
+        checker = CudaChecker()
+        checker.result.connect(self._on_cuda_result)
+        self._run_worker(checker, checker.check, [checker.result])
 
     def _on_cuda_result(self, text: str, color: str):
         self._cuda_status.setText(text)
@@ -819,21 +829,18 @@ class SettingsTab(QWidget):
         self._whisper_api_frame.setVisible(idx == 1)
 
     def _fetch_ollama_models(self):
-        self._ollama_status.setText("conectando con Ollama…")
+        self._ollama_status.setText(t("ollama_connecting"))
         self._ollama_model_combo.clear()
         base_url = self._ollama_url.text().strip() or "http://localhost:11434"
 
-        self._fetch_thread = QThread()
         self._fetcher = OllamaFetcher(base_url)
-        self._fetcher.moveToThread(self._fetch_thread)
-        self._fetch_thread.started.connect(self._fetcher.fetch)
         self._fetcher.done.connect(self._on_ollama_models)
-        self._fetcher.done.connect(self._fetch_thread.quit)
         self._fetcher.error.connect(self._on_ollama_error)
-        self._fetcher.error.connect(self._fetch_thread.quit)
-        self._fetch_thread.start()
+        self._run_worker(self._fetcher, self._fetcher.fetch, [self._fetcher.done, self._fetcher.error])
 
     def _on_ollama_models(self, models: list):
+        if self.sender() is not self._fetcher:
+            return   # respuesta de una consulta anterior
         self._ollama_model_combo.clear()
         if models:
             self._ollama_model_combo.addItems(models)
@@ -841,14 +848,16 @@ class SettingsTab(QWidget):
             idx = self._ollama_model_combo.findText(saved)
             if idx >= 0:
                 self._ollama_model_combo.setCurrentIndex(idx)
-            self._ollama_status.setText(f"{len(models)} modelo(s) instalado(s)")
+            self._ollama_status.setText(t("ollama_models_found").format(n=len(models)))
             self._ollama_status.setStyleSheet("font-size: 11px; color: #639922;")
         else:
-            self._ollama_status.setText("Ollama no tiene modelos instalados aún")
+            self._ollama_status.setText(t("ollama_no_models"))
             self._ollama_status.setStyleSheet("font-size: 11px; color: #EF9F27;")
 
     def _on_ollama_error(self, err: str):
-        self._ollama_status.setText(f"Ollama no encontrado — ¿está corriendo?")
+        if self.sender() is not self._fetcher:
+            return
+        self._ollama_status.setText(t("ollama_not_found"))
         self._ollama_status.setStyleSheet("font-size: 11px; color: #E24B4A;")
 
     def _save(self):
@@ -902,7 +911,7 @@ class SettingsTab(QWidget):
 
         config.save(cfg)
         self._cfg = cfg
-        self._save_status.setText("✓ guardado")
+        self._save_status.setText(f"✓ {t('saved')}")
         self.saved.emit()
         QTimer.singleShot(2000, lambda: self._save_status.setText(""))
 
@@ -926,7 +935,7 @@ class SettingsTab(QWidget):
 
     def _add_profile(self):
         from PyQt6.QtWidgets import QInputDialog
-        text, ok = QInputDialog.getText(self, "Nuevo Perfil", "Nombre del perfil:")
+        text, ok = QInputDialog.getText(self, t("profile_name"), t("profile_name_prompt"))
         if ok and text.strip():
             pid = text.strip().lower().replace(" ", "_")
             while any(p["id"] == pid for p in self._cfg.get("profiles", [])):
@@ -954,7 +963,7 @@ class SettingsTab(QWidget):
 
     def _add_or_model(self):
         from PyQt6.QtWidgets import QInputDialog
-        text, ok = QInputDialog.getText(self, "Nuevo Modelo OpenRouter", "ID del modelo (ej: openai/gpt-4o):")
+        text, ok = QInputDialog.getText(self, "OpenRouter", t("or_model_prompt"))
         if ok and text.strip():
             m_id = text.strip()
             for i in range(self._or_model_combo.count()):
@@ -974,11 +983,11 @@ class SettingsTab(QWidget):
     def _generate_profile(self):
         desc = self._gen_input.text().strip()
         if not desc:
-            self._gen_status.setText("Escribe tu puesto o descripción primero.")
+            self._gen_status.setText(t("profile_gen_empty"))
             self._gen_status.setStyleSheet("font-size: 11px; color: #EF9F27;")
             return
         self._gen_btn.setEnabled(False)
-        self._gen_btn.setText("generando…")
+        self._gen_btn.setText(t("generating"))
         self._gen_status.setText("")
 
         from core.rewriter import ProfileGenerateSignals, ProfileGenerateTask
@@ -993,13 +1002,13 @@ class SettingsTab(QWidget):
         self._profile_role.setText(role)
         self._profile_terms.setPlainText(terms)
         self._gen_btn.setEnabled(True)
-        self._gen_btn.setText("✨ Generar")
-        self._gen_status.setText("✓ perfil generado — revisá y guardá los ajustes")
+        self._gen_btn.setText(f"✨ {t('btn_generate_profile')}")
+        self._gen_status.setText(f"✓ {t('profile_generated')}")
         self._gen_status.setStyleSheet("font-size: 11px; color: #639922;")
         QTimer.singleShot(4000, lambda: self._gen_status.setText(""))
 
     def _on_profile_error(self, msg: str):
         self._gen_btn.setEnabled(True)
-        self._gen_btn.setText("✨ Generar")
+        self._gen_btn.setText(f"✨ {t('btn_generate_profile')}")
         self._gen_status.setText(f"Error: {msg}")
         self._gen_status.setStyleSheet("font-size: 11px; color: #E24B4A;")

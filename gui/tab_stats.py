@@ -5,6 +5,7 @@ Panel de estadísticas de uso.
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QFrame
 from PyQt6.QtCore import Qt
 import config
+import history
 from core.i18n import t
 
 STYLE_CARD = """
@@ -23,6 +24,15 @@ ICONS = {
     "wpm":            "⚡",
     "ai_corrections": "✧",
 }
+
+
+def _fmt_duration(secs: int) -> str:
+    if secs < 60:
+        return f"{secs} s"
+    mins = secs // 60
+    if mins >= 60:
+        return f"{mins // 60}h {mins % 60}min"
+    return f"{mins} min"
 
 
 class StatCard(QFrame):
@@ -64,8 +74,8 @@ class StatsTab(QWidget):
         specs = [
             ("words_total",    "✦", t("stat_words"), "0"),
             ("wpm",            "⚡", t("stat_wpm"),   f"0 {t('stat_wpm_unit')}"),
-            ("time_recorded",  "◷", t("stat_time"),    "0 min"),
-            ("time_saved",     "◈", t("stat_saved"),   "0 min"),
+            ("time_recorded",  "◷", t("stat_time"),    "0 s"),
+            ("time_saved",     "◈", t("stat_saved"),   "0 s"),
             ("sessions_total", "◎", t("stat_sessions"),      "0"),
             ("ai_corrections", "✧", t("stat_ai"),   "0"),
         ]
@@ -102,23 +112,12 @@ class StatsTab(QWidget):
         rec_s    = stats.get("time_recorded_s", 0)
         ai_corr  = stats.get("ai_corrections", 0)
 
-        # tiempo grabado
-        rec_min = rec_s // 60
-        if rec_min >= 60:
-            time_str = f"{rec_min // 60}h {rec_min % 60}min"
-        else:
-            time_str = f"{rec_min} min"
-
-        # tiempo ahorrado: estimamos 40 PPM de escritura manual
+        # tiempo ahorrado: escribir a mano (~40 PPM) menos lo que se tardó en dictar
         words_per_min_typing = 40
-        saved_min = words // words_per_min_typing if words > 0 else 0
-        if saved_min >= 60:
-            saved_str = f"{saved_min // 60}h {saved_min % 60}min"
-        else:
-            saved_str = f"{saved_min} min"
+        saved_s = max(0, words * 60 // words_per_min_typing - rec_s)
 
-        # velocidad dictado
-        wpm = (words // (rec_min or 1)) if rec_min > 0 else 0
+        # velocidad de dictado (con muy poco audio la cifra no significa nada)
+        wpm = round(words * 60 / rec_s) if rec_s >= 10 else 0
 
         # formato palabras
         if words >= 1000:
@@ -126,9 +125,15 @@ class StatsTab(QWidget):
         else:
             words_str = str(words)
 
+        time_str  = _fmt_duration(rec_s)
+        saved_str = _fmt_duration(saved_s)
+
         self._cards["words_total"].set_value(words_str)
         self._cards["wpm"].set_value(f"{wpm} {t('stat_wpm_unit')}")
         self._cards["time_recorded"].set_value(time_str)
         self._cards["time_saved"].set_value(saved_str)
         self._cards["sessions_total"].set_value(str(sessions))
         self._cards["ai_corrections"].set_value(str(ai_corr))
+
+        entries = history.load()
+        self._last_text.setText(entries[0].get("text", "—") if entries else "—")

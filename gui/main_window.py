@@ -367,13 +367,13 @@ class MainWindow(QMainWindow):
     def _on_result_ready(self, text: str, ai_failed: bool = False, error_msg: str = ""):
         self._reset_busy()
         self._tab_transcribe.set_result(text, ai_failed=ai_failed, error_msg=error_msg)
-        self._tab_stats.refresh()
         history.save(text)
         self._tab_history.refresh()
         word_count = len(text.split())
         config.update_stat("words_total", word_count)
         if not ai_failed:
             config.update_stat("ai_corrections", 1)
+        self._tab_stats.refresh()
         pyperclip.copy(text)
 
         cfg = config.load()
