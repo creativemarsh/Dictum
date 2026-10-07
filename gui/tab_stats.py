@@ -65,7 +65,7 @@ class StatsTab(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(10)
 
         grid = QGridLayout()
@@ -92,8 +92,8 @@ class StatsTab(QWidget):
         sep.setStyleSheet("background: #2c2c2a; max-height: 1px;")
         layout.addWidget(sep)
 
-        last_lbl = QLabel(t("stat_last"))
-        last_lbl.setStyleSheet("font-size: 11px; color: #5f5e5a; letter-spacing: 0.05em;")
+        last_lbl = QLabel(t("stat_last").upper())
+        last_lbl.setStyleSheet("font-size: 10px; font-weight: 600; color: #5f5e5a; letter-spacing: 1px;")
         layout.addWidget(last_lbl)
 
         self._last_text = QLabel("—")

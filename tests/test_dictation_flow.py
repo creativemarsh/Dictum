@@ -243,6 +243,49 @@ class DictationFlowTest(unittest.TestCase):
         spin(1700)
         self.assertEqual(tab._btn_copy.text(), "copy")
 
+    def test_errors_show_in_a_banner_not_in_the_result(self):
+        tab = self.w._tab_transcribe
+        tab.set_result("texto bueno")
+        tab.show_error("Error de micrófono")
+        self.assertTrue(tab._banner.isVisibleTo(tab))
+        self.assertIn("Error de micrófono", tab._banner.text())
+        self.assertEqual(tab._output.toPlainText(), "texto bueno")
+        # al empezar a grabar de nuevo el aviso desaparece
+        tab.set_state("recording")
+        self.assertFalse(tab._banner.isVisibleTo(tab))
+
+    def test_ai_failure_banner_keeps_raw_text_clean(self):
+        tab = self.w._tab_transcribe
+        tab.set_result("hola mundo", ai_failed=True, error_msg="Ollama caído")
+        self.assertEqual(tab._output.toPlainText(), "hola mundo")
+        self.assertIn("Ollama caído", tab._banner.text())
+
+    def test_edited_result_is_what_gets_copied(self):
+        tab = self.w._tab_transcribe
+        tab.set_result("hola mundo")
+        tab._output.setPlainText("hola mundo editado")
+        tab._btn_copy.click()
+        self.assertEqual(_clipboard[-1], "hola mundo editado")
+
+    def test_hint_follows_hotkey_mode(self):
+        tab = self.w._tab_transcribe
+        self.assertIn("Alt", tab._hint.text())
+        hold_idle = tab._hint.text()
+        cfg = config.load()
+        cfg["hotkey_mode"] = "toggle"
+        config.save(cfg)
+        tab.refresh_hint()
+        self.assertNotEqual(tab._hint.text(), hold_idle)
+
+    def test_settings_fit_the_minimum_window_width(self):
+        from PyQt6.QtWidgets import QScrollArea
+        self.w._tabs.setCurrentWidget(self.w._tab_settings)
+        self.w.resize(self.w.minimumWidth(), 560)
+        self.w.show()
+        spin(50)
+        area = self.w._tab_settings.findChild(QScrollArea)
+        self.assertLessEqual(area.widget().minimumSizeHint().width(), area.viewport().width())
+
     def test_history_copy_and_clear_confirmation(self):
         history.save("entrada")
         self.w._tab_history.refresh()
@@ -305,8 +348,7 @@ class ConfigTest(unittest.TestCase):
 def tearDownModule():
     # esperar a los hilos de ajustes (CUDA / Ollama) antes de que Python salga
     for w in _windows:
-        for thread, _ in list(w._tab_settings._workers):
-            thread.wait(6000)
+        w._tab_settings.shutdown(6000)
 
 
 if __name__ == "__main__":

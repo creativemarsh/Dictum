@@ -2,6 +2,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QMessageBox,
 )
+from datetime import datetime, timedelta
+
 from PyQt6.QtCore import Qt
 import history as hist
 from core.i18n import t
@@ -38,31 +40,50 @@ STYLE_BTN_DANGER = """
 """
 
 
+SECTION_HEADER = "font-size: 10px; font-weight: 600; color: #5f5e5a; letter-spacing: 1px;"
+
+
+def _friendly_ts(ts: str) -> str:
+    """'2026-10-07 10:02:00' → 'Hoy 10:02' / 'Ayer 10:02' / '07/10/2026 10:02'."""
+    try:
+        dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+    except (TypeError, ValueError):
+        return ts or ""
+    today = datetime.now().date()
+    hm = dt.strftime("%H:%M")
+    if dt.date() == today:
+        return f"{t('today')} {hm}"
+    if dt.date() == today - timedelta(days=1):
+        return f"{t('yesterday')} {hm}"
+    return dt.strftime("%d/%m/%Y ") + hm
+
+
 class HistoryCard(QFrame):
     def __init__(self, entry: dict, parent=None):
         super().__init__(parent)
         self.setObjectName("card")   # el estilo no debe heredarse a los QLabel hijos
         self.setStyleSheet(STYLE_CARD)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(6)
+        layout.setContentsMargins(12, 8, 8, 10)
+        layout.setSpacing(4)
 
-        ts = QLabel(entry.get("ts", ""))
-        ts.setStyleSheet("font-size: 10px; color: #5f5e5a;")
-        layout.addWidget(ts)
+        head = QHBoxLayout()
+        ts = QLabel(_friendly_ts(entry.get("ts", "")))
+        ts.setToolTip(entry.get("ts", ""))
+        ts.setStyleSheet("font-size: 11px; color: #5f5e5a;")
+        head.addWidget(ts)
+        head.addStretch()
+        _text = entry.get("text", "")
+        copy_btn = CopyButton(lambda: _text, STYLE_BTN, padding="3px 10px", font_size="11px")
+        copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        head.addWidget(copy_btn)
+        layout.addLayout(head)
 
         text_lbl = QLabel(entry.get("text", ""))
         text_lbl.setWordWrap(True)
         text_lbl.setStyleSheet("font-size: 13px; color: #e8e6e3;")
         text_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(text_lbl)
-
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-        _text = entry.get("text", "")
-        copy_btn = CopyButton(lambda: _text, STYLE_BTN, padding="4px 10px", font_size="11px")
-        btn_row.addWidget(copy_btn)
-        layout.addLayout(btn_row)
 
 
 class HistoryTab(QWidget):
@@ -73,12 +94,12 @@ class HistoryTab(QWidget):
 
     def _setup_ui(self):
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(14, 14, 14, 14)
+        outer.setContentsMargins(16, 14, 16, 16)
         outer.setSpacing(10)
 
         header = QHBoxLayout()
         self._count_lbl = QLabel(t("hist_title"))
-        self._count_lbl.setStyleSheet("font-size: 11px; color: #5f5e5a; letter-spacing: 0.05em;")
+        self._count_lbl.setStyleSheet(SECTION_HEADER)
         header.addWidget(self._count_lbl)
         header.addStretch()
         clear_btn = QPushButton(t("hist_clear"))
@@ -128,7 +149,7 @@ class HistoryTab(QWidget):
                 self._list_layout.insertWidget(i, HistoryCard(entry))
 
         n = len(entries)
-        self._count_lbl.setText(f"{t('hist_title').lower()} — {n}")
+        self._count_lbl.setText(f"{t('hist_title').upper()} · {n}")
 
     def _clear(self):
         if not hist.load():
