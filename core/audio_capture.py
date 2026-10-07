@@ -63,14 +63,7 @@ class AudioRecorder(QObject):
     def stop_recording(self):
         if not self._recording:
             return
-        self._recording = False
-        try:
-            if hasattr(self, "_stream") and self._stream:
-                self._stream.stop()
-                self._stream.close()
-        except Exception as e:
-            import sys
-            print(f"[AudioRecorder] Error al detener stream: {e}", file=sys.stderr)
+        self._close_stream()
 
         if not self._frames:
             self.error.emit("No se capturó audio.")
@@ -79,7 +72,25 @@ class AudioRecorder(QObject):
         wav_bytes = self._frames_to_wav()
         self.finished.emit(wav_bytes)
 
+    def cancel_recording(self):
+        """Detiene la grabación y descarta el audio sin emitir finished/error."""
+        if not self._recording:
+            return
+        self._close_stream()
+        self._frames = []
+
     # ── privada ────────────────────────────────────────────────────────────
+
+    def _close_stream(self):
+        self._recording = False
+        try:
+            if hasattr(self, "_stream") and self._stream:
+                self._stream.stop()
+                self._stream.close()
+        except Exception as e:
+            import sys
+            print(f"[AudioRecorder] Error al detener stream: {e}", file=sys.stderr)
+        self._stream = None
 
     def _callback(self, indata: np.ndarray, frames, time, status):
         if not self._recording:
@@ -107,14 +118,24 @@ class HotkeyListener(QObject):
     Señales:
         pressed()
         released()
+        cancel_pressed()  — Escape pulsado mientras hay un dictado activo
     """
-    pressed  = pyqtSignal()
-    released = pyqtSignal()
+    pressed        = pyqtSignal()
+    released       = pyqtSignal()
+    cancel_pressed = pyqtSignal()
+
+    CANCEL_KEYS = ("esc", "escape")
 
     def __init__(self, hotkey: str = "alt", parent=None):
         super().__init__(parent)
         self.hotkey = hotkey
         self._active = False
+        # Solo se escucha Escape mientras hay algo que cancelar, para no
+        # emitir señales por cada Escape que el usuario pulse en otras apps.
+        self._cancel_armed = False
+
+    def set_cancel_armed(self, armed: bool):
+        self._cancel_armed = armed
 
     def reset_state(self):
         self._active = False
@@ -131,6 +152,11 @@ class HotkeyListener(QObject):
     def stop(self):
         keyboard.unhook_all()
         self._active = False
+
+    def _is_cancel_key(self, event) -> bool:
+        name = (getattr(event, "name", None) or "").lower()
+        # si el propio hotkey es Escape, no puede usarse también para cancelar
+        return name in self.CANCEL_KEYS and self.hotkey.lower() not in self.CANCEL_KEYS
 
     def _matches(self, event) -> bool:
         if not event or not getattr(event, 'name', None):
@@ -158,6 +184,10 @@ class HotkeyListener(QObject):
         return False
 
     def _on_key_press(self, event):
+        if self._cancel_armed and self._is_cancel_key(event):
+            self._cancel_armed = False
+            self.cancel_pressed.emit()
+            return
         if self._matches(event) and not self._active:
             self._active = True
             self.pressed.emit()

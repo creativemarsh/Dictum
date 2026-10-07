@@ -2,7 +2,6 @@
 tab_transcribe.py
 Tab principal: estado, waveform animado, resultado y botones.
 """
-import pyperclip
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QFrame, QSizePolicy, QTextEdit,
@@ -11,6 +10,7 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QPainter, QColor, QPen
 import random
 from core.i18n import t
+from gui.copy_button import CopyButton
 
 STYLE_BADGE = """
     QLabel {{
@@ -62,7 +62,7 @@ STYLE_BTN_CANCEL = """
 """
 
 STYLE_OUTPUT = """
-    QFrame {
+    QFrame#card {
         background: #111116;
         border: 1px solid #2c2c2a;
         border-radius: 8px;
@@ -166,6 +166,7 @@ class TranscribeTab(QWidget):
 
         # ── output ────────────────────────────────────────────────────────
         out_frame = QFrame()
+        out_frame.setObjectName("card")   # el estilo no debe heredarse a los QLabel hijos
         out_frame.setStyleSheet(STYLE_OUTPUT)
         out_layout = QVBoxLayout(out_frame)
         out_layout.setContentsMargins(12, 10, 12, 10)
@@ -194,9 +195,7 @@ class TranscribeTab(QWidget):
         self._btn_cancel.setVisible(False)
         btn_row.addWidget(self._btn_cancel)
 
-        self._btn_copy = QPushButton(t("btn_copy"))
-        self._btn_copy.setStyleSheet(STYLE_BTN)
-        self._btn_copy.clicked.connect(self._copy)
+        self._btn_copy = CopyButton(lambda: self._result_text, STYLE_BTN)
         self._btn_copy.setVisible(False)
         btn_row.addWidget(self._btn_copy)
 
@@ -242,6 +241,8 @@ class TranscribeTab(QWidget):
         hk = cfg.get("hotkey", "alt")
         lang = cfg.get("language", "es").upper()
         self._hint.setText(f"{_key_display_name(hk)} {t('tray_record_hint')} | {t('hint_lang')}: {lang}")
+        cancel = t("btn_cancel")
+        self._btn_cancel.setText(f"{cancel} (Esc)" if cfg.get("esc_cancels", True) else cancel)
 
     def set_state(self, state: str):
         """state: 'idle' | 'recording' | 'processing' | 'cancelling' | 'done'"""
@@ -260,6 +261,7 @@ class TranscribeTab(QWidget):
 
         self._btn_cancel.setVisible(state in ("recording", "processing"))
         self._btn_copy.setVisible(state == "done")
+        self._btn_copy.reset()
     @pyqtSlot(float)
     def update_level(self, rms: float):
         self._wave.set_level(rms)
@@ -282,14 +284,6 @@ class TranscribeTab(QWidget):
         self._output.setPlainText(f"Error: {msg}")
         self._output.setStyleSheet(self._output_style("#E24B4A"))
         self.set_state("idle")
-
-    # ── botones ────────────────────────────────────────────────────────────
-
-    def _copy(self):
-        if self._result_text:
-            pyperclip.copy(self._result_text)
-
-
 
     def _load_profiles(self):
         import config

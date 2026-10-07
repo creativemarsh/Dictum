@@ -3,11 +3,30 @@ transcriber.py
 Transcribe audio WAV usando faster-whisper (CUDA) con fallback a API.
 """
 import io
+import threading
 import time
 import httpx
 from PyQt6.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
 import config
 import session_log
+
+
+# Cargar un WhisperModel tarda varios segundos (y en "medium"/"large" mucho más),
+# así que se reutiliza entre dictados mientras no cambie el modelo/dispositivo.
+_model_cache: dict = {}
+_model_lock = threading.Lock()
+
+
+def _get_model(model_size: str, device: str, compute_type: str):
+    from faster_whisper import WhisperModel
+    key = (model_size, device, compute_type)
+    with _model_lock:
+        model = _model_cache.get(key)
+        if model is None:
+            _model_cache.clear()   # liberar VRAM/RAM del modelo anterior
+            model = WhisperModel(model_size, device=device, compute_type=compute_type)
+            _model_cache[key] = model
+        return model
 
 
 class TranscribeTask(QRunnable):
@@ -48,7 +67,6 @@ class TranscribeTask(QRunnable):
 
     def _local(self, cfg: dict) -> tuple:
         """Devuelve (text, device_name)."""
-        from faster_whisper import WhisperModel
         model_size   = cfg.get("whisper_model", "medium")
         device_pref  = cfg.get("whisper_device", "auto")
         audio_array  = self._wav_to_float32()
@@ -61,12 +79,12 @@ class TranscribeTask(QRunnable):
 
         use_cuda = (device_pref == "cuda") or (device_pref == "auto" and cuda_ok)
 
-        profile = cfg.get("user_profile", {})
+        profile = config.get_active_profile(cfg)
         initial_prompt = profile.get("custom_terms", "").strip() or None
 
         if use_cuda:
             try:
-                model = WhisperModel(model_size, device="cuda", compute_type="float16")
+                model = _get_model(model_size, "cuda", "float16")
                 segments, _ = model.transcribe(audio_array, language=self.lang, beam_size=5, initial_prompt=initial_prompt)
                 return " ".join(s.text.strip() for s in segments), "cuda"
             except Exception as e:
@@ -74,7 +92,7 @@ class TranscribeTask(QRunnable):
                     raise RuntimeError(f"CUDA no disponible: {e}") from e
                 # auto → caer a CPU
 
-        model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        model = _get_model(model_size, "cpu", "int8")
         segments, _ = model.transcribe(audio_array, language=self.lang, beam_size=5, initial_prompt=initial_prompt)
         return " ".join(s.text.strip() for s in segments), "cpu"
 
@@ -121,6 +139,7 @@ class Transcriber(QObject):
         self._sigs = None  # Evita que se elimine por recolección de basura
 
     def transcribe(self, wav_bytes: bytes):
+        self.cancel()   # un resultado viejo nunca debe pisar al nuevo
         cfg  = config.load()
         lang = cfg.get("language", "es")
         self._sigs = TranscribeSignals()
@@ -129,3 +148,14 @@ class Transcriber(QObject):
         task = TranscribeTask(wav_bytes, self._sigs, lang)
         task.setAutoDelete(True)
         self._pool.start(task)
+
+    def cancel(self):
+        """Descarta el resultado de la transcripción en curso (si la hay)."""
+        if self._sigs is None:
+            return
+        for sig in (self._sigs.done, self._sigs.error):
+            try:
+                sig.disconnect()
+            except TypeError:
+                pass
+        self._sigs = None

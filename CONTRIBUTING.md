@@ -39,7 +39,7 @@ git checkout -b bugfix/audio-capture-crash
 
 - **Keep the separation:** logic lives in `core/`, UI lives in `gui/`. Don't mix them.
 - **Keep it lean:** Dictum is fast, silent, and privacy-focused. Don't add heavy dependencies unless strictly necessary.
-- **Test before submitting:** Run the app from terminal and verify your changes work end to end.
+- **Test before submitting:** Run the app from terminal and verify your changes work end to end, then run the automated tests with `python -m unittest discover -s tests` (they don't need a microphone or GPU).
 - **No hardcoded secrets:** API keys and paths go through `~/.dictum/config.json` or environment variables, never in source code.
 
 ---
