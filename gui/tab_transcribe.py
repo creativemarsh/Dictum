@@ -57,14 +57,14 @@ STYLE_BTN = f"""
 STYLE_BTN_CANCEL = f"""
     QPushButton {{
         background: transparent;
-        border: 1px solid {theme.RED};
+        border: 1px solid {theme.BORDER_HI};
         border-radius: 6px;
         padding: 5px 14px;
         font-size: 12px;
-        color: {theme.RED};
+        color: {theme.TEXT_2};
     }}
-    QPushButton:hover {{ background: #2a1719; color: #ff8a87; }}
-    QPushButton:pressed {{ background: #3a1d20; }}
+    QPushButton:hover {{ background: {theme.RED_BG}; border-color: {theme.RED_BORDER}; color: {theme.RED_TEXT}; }}
+    QPushButton:pressed {{ background: {theme.RED_BG_HI}; }}
 """
 
 STYLE_CARD = f"""
@@ -108,8 +108,8 @@ BADGES = {
 
 # colores de los avisos: (fondo, borde, texto)
 BANNERS = {
-    "warning": ("#2a2112", "#5c4416", "#f7c35f"),
-    "error":   ("#2a1719", "#5e2629", "#ff8f8c"),
+    "warning": (theme.AMBER_BG, theme.AMBER_BORDER, theme.AMBER_TEXT),
+    "error":   (theme.RED_BG, theme.RED_BORDER, theme.RED_TEXT),
 }
 
 

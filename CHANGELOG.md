@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### UI redesign
-- New cool-toned palette shared by every screen (`gui/theme.py`)
+- New colour system (`gui/theme.py`): layered neutral surfaces, a single
+  accent colour, and red/amber/green only for states. No colour is
+  hard-coded outside the theme any more
+- Accent colour picker in Settings (Indigo, Blue, Teal, Rose, Graphite).
+  Text on the accent is adjusted to meet WCAG AA contrast, checked by a test
+- Changing the accent or the interface language offers to restart Dictum
+  instead of asking you to restart it by hand
 - Native dark title bar instead of the fake one, which doubled the
   Windows title bar. Closing the window keeps Dictum running in the tray
 - Big animated microphone button on the Transcription tab: pulses with your

@@ -286,6 +286,21 @@ class DictationFlowTest(unittest.TestCase):
         area = self.w._tab_settings.findChild(QScrollArea)
         self.assertLessEqual(area.widget().minimumSizeHint().width(), area.viewport().width())
 
+    def test_changing_accent_asks_for_restart(self):
+        settings = self.w._tab_settings
+        asked = []
+        settings.restart_requested.disconnect()   # sin el diálogo modal en el test
+        settings.restart_requested.connect(lambda: asked.append(True))
+
+        settings._save()                       # sin cambios: no hace falta reiniciar
+        self.assertEqual(asked, [])
+
+        other = next(k for k in settings._accent_picker._keys if k != config.load()["accent"])
+        settings._accent_picker.set_value(other)
+        settings._save()
+        self.assertEqual(config.load()["accent"], other)
+        self.assertEqual(asked, [True])
+
     def test_history_copy_and_clear_confirmation(self):
         history.save("entrada")
         self.w._tab_history.refresh()
@@ -338,6 +353,18 @@ class ConfigTest(unittest.TestCase):
         task._ollama = lambda cfg: "   \n"
         task.run()
         self.assertEqual(got[0][0], "error")
+
+    def test_every_accent_meets_wcag_contrast(self):
+        from gui import theme
+        for key, color in theme.ACCENTS.items():
+            on = theme.on_color(color)
+            solid = theme.solid_for_text(color, on)
+            # texto de los botones sobre el acento: WCAG AA (4.5:1)
+            self.assertGreaterEqual(theme.contrast(solid, on), 4.5, key)
+            # el acento como elemento gráfico sobre el fondo: 3:1
+            self.assertGreaterEqual(theme.contrast(color, theme.BG), 3.0, key)
+        for name in ("TEXT", "TEXT_2", "MUTED"):
+            self.assertGreaterEqual(theme.contrast(getattr(theme, name), theme.SURFACE), 4.5, name)
 
     def test_defaults_are_not_shared_between_loads(self):
         a = config.load()

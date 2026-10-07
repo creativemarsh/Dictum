@@ -8,39 +8,40 @@ from PyQt6.QtCore import Qt
 import history as hist
 from core.i18n import t
 from gui.copy_button import CopyButton
+from gui import theme
 
-STYLE_CARD = """
-    QFrame#card {
-        background: #17181d;
-        border: 1px solid #262730;
+STYLE_CARD = f"""
+    QFrame#card {{
+        background: {theme.SURFACE};
+        border: 1px solid {theme.BORDER};
         border-radius: 8px;
-    }
+    }}
 """
-STYLE_BTN = """
-    QPushButton {
+STYLE_BTN = f"""
+    QPushButton {{
         background: transparent;
-        border: 1px solid #34353f;
+        border: 1px solid {theme.BORDER_HI};
         border-radius: 6px;
         padding: 4px 10px;
         font-size: 11px;
-        color: #8a8b98;
-    }
-    QPushButton:hover { background: #262730; color: #ececf1; }
+        color: {theme.MUTED};
+    }}
+    QPushButton:hover {{ background: {theme.BORDER}; color: {theme.TEXT}; }}
 """
-STYLE_BTN_DANGER = """
-    QPushButton {
+STYLE_BTN_DANGER = f"""
+    QPushButton {{
         background: transparent;
-        border: 1px solid #f25f5c;
+        border: 1px solid {theme.BORDER_HI};
         border-radius: 6px;
         padding: 4px 10px;
         font-size: 11px;
-        color: #f25f5c;
-    }
-    QPushButton:hover { background: #2a1719; color: #f25f5c; }
+        color: {theme.MUTED};
+    }}
+    QPushButton:hover {{ background: {theme.RED_BG}; border-color: {theme.RED_BORDER}; color: {theme.RED_TEXT}; }}
 """
 
 
-SECTION_HEADER = "font-size: 10px; font-weight: 600; color: #5d5e6b; letter-spacing: 1px;"
+SECTION_HEADER = f"font-size: 10px; font-weight: 600; color: {theme.FAINT}; letter-spacing: 1px;"
 
 
 def _friendly_ts(ts: str) -> str:
@@ -70,7 +71,7 @@ class HistoryCard(QFrame):
         head = QHBoxLayout()
         ts = QLabel(_friendly_ts(entry.get("ts", "")))
         ts.setToolTip(entry.get("ts", ""))
-        ts.setStyleSheet("font-size: 11px; color: #5d5e6b;")
+        ts.setStyleSheet(f"font-size: 11px; color: {theme.FAINT};")
         head.addWidget(ts)
         head.addStretch()
         _text = entry.get("text", "")
@@ -81,7 +82,7 @@ class HistoryCard(QFrame):
 
         text_lbl = QLabel(entry.get("text", ""))
         text_lbl.setWordWrap(True)
-        text_lbl.setStyleSheet("font-size: 13px; color: #ececf1;")
+        text_lbl.setStyleSheet(f"font-size: 13px; color: {theme.TEXT};")
         text_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(text_lbl)
 
@@ -110,15 +111,15 @@ class HistoryTab(QWidget):
 
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
-        self._scroll.setStyleSheet("""
-            QScrollArea { border: none; background: transparent; }
-            QScrollBar:vertical {
-                background: #0f1014; width: 6px; border-radius: 3px;
-            }
-            QScrollBar::handle:vertical {
-                background: #34353f; border-radius: 3px; min-height: 20px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        self._scroll.setStyleSheet(f"""
+            QScrollArea {{ border: none; background: transparent; }}
+            QScrollBar:vertical {{
+                background: {theme.BG}; width: 6px; border-radius: 3px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {theme.BORDER_HI}; border-radius: 3px; min-height: 20px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
         """)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         outer.addWidget(self._scroll)
@@ -141,7 +142,7 @@ class HistoryTab(QWidget):
 
         if not entries:
             empty = QLabel(t("hist_empty"))
-            empty.setStyleSheet("font-size: 13px; color: #34353f; font-style: italic;")
+            empty.setStyleSheet(f"font-size: 13px; color: {theme.BORDER_HI}; font-style: italic;")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._list_layout.insertWidget(0, empty)
         else:

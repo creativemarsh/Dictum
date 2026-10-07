@@ -15,14 +15,15 @@ from PyQt6.QtCore import (
 from PyQt6.QtGui import QPainter, QColor, QFont, QFontMetrics, QCursor, QPainterPath
 
 from core.i18n import t
+from gui import theme
 
-RED    = "#f25f5c"
-ORANGE = "#f5a524"
-GREEN  = "#3ecf8e"
-PURPLE = "#7c6cf6"
-GREY   = "#8a8b98"
-TEXT   = "#ececf1"
-MUTED  = "#5d5e6b"
+RED    = theme.RED
+ORANGE = theme.AMBER
+GREEN  = theme.GREEN
+PURPLE = theme.ACCENT
+GREY   = theme.MUTED
+TEXT   = theme.TEXT
+MUTED  = theme.FAINT
 
 # estado → (clave i18n, color, ms antes de ocultarse; 0 = permanece)
 STATES = {
@@ -248,7 +249,7 @@ class DictationOverlay(QWidget):
         # texto secundario (Esc para cancelar / detalle del error)
         if hint_w:
             p.setFont(self._small)
-            p.setPen(QColor(MUTED if self._state != "error" else "#ff8f8c"))
+            p.setPen(QColor(MUTED if self._state != "error" else theme.RED_TEXT))
             fm = QFontMetrics(self._small)
             hint = fm.elidedText(self._hint(), Qt.TextElideMode.ElideRight, hint_w)
             p.drawText(QRectF(x, 0, hint_w + 2, r.height()),

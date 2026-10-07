@@ -41,7 +41,7 @@
   "stat_ai": "AI corrections",
   
   "settings_general": "GENERAL",
-  "ui_language": "Interface Language (Requires restart)",
+  "ui_language": "Interface language",
   "play_sounds": "Play feedback sounds",
   "transcription_settings": "TRANSCRIPTION",
   "dictation_lang": "Dictation language",
@@ -149,5 +149,16 @@
   "tray_hidden_msg": "It keeps listening for {key} in the background. Use the tray icon to open it or quit.",
   "today": "Today",
   "yesterday": "Yesterday",
-  "stat_saved_sub": "compared with typing it at 40 words per minute · {words} words dictated"
+  "stat_saved_sub": "compared with typing it at 40 words per minute · {words} words dictated",
+
+  "accent_color": "Accent colour",
+  "accent_indigo": "Indigo",
+  "accent_blue": "Blue",
+  "accent_teal": "Teal",
+  "accent_rose": "Rose",
+  "accent_mono": "Graphite",
+  "restart_title": "Restart Dictum?",
+  "restart_msg": "The new language or colour is applied when Dictum restarts. Restart now?",
+  "btn_restart": "Restart now",
+  "btn_later": "Later"
 }

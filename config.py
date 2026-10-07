@@ -24,6 +24,7 @@ DEFAULTS = {
     "openrouter_api_key": "",
     "openrouter_custom_models": [],   # lista de modelos que el usuario ha introducido
     "ui_language": "en",              # Idioma de la interfaz ("en" o "es")
+    "accent": "indigo",               # color de acento (ver gui/theme.py)
     "language": "es",
     "stats": {
         "words_total": 0,

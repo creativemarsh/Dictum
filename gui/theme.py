@@ -7,23 +7,125 @@ import sys
 from PyQt6.QtCore import Qt, QRectF, QPointF
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPixmap, QPen
 
-# ── paleta ───────────────────────────────────────────────────────────────────
-BG        = "#0f1014"   # fondo de ventana
-SURFACE   = "#17181d"   # tarjetas
-SURFACE_2 = "#1f2027"   # elementos elevados / hover
-INPUT     = "#121318"   # campos de texto
-BORDER    = "#262730"
-BORDER_HI = "#34353f"
-TEXT      = "#ececf1"
-TEXT_2    = "#b9bac4"
-MUTED     = "#8a8b98"
-FAINT     = "#5d5e6b"
-ACCENT    = "#7c6cf6"
-ACCENT_HI = "#9184ff"
-RED       = "#f25f5c"
-ORANGE    = "#f5a524"
-GREEN     = "#3ecf8e"
-GREEN_HI  = "#6ee7b0"
+# ── sistema de color ─────────────────────────────────────────────────────────
+# Principios:
+#  - La interfaz es casi toda neutra; el color se reserva para lo que importa.
+#  - Un único color de acento (elegible) para la marca: botón del micrófono,
+#    botón principal, interruptores y foco.
+#  - Rojo / ámbar / verde solo para estados (grabando, aviso, hecho), con
+#    luminosidad parecida para que ninguno "grite" más que otro.
+#  - Las superficies suben de claridad con la elevación (fondo → tarjeta →
+#    elevado), así hacen falta menos bordes.
+
+
+def mix(a: str, b: str, t: float) -> str:
+    """Mezcla dos colores hex: t=0 → a, t=1 → b."""
+    ca, cb = QColor(a), QColor(b)
+    return QColor(
+        round(ca.red() + (cb.red() - ca.red()) * t),
+        round(ca.green() + (cb.green() - ca.green()) * t),
+        round(ca.blue() + (cb.blue() - ca.blue()) * t),
+    ).name()
+
+
+# neutros (gris con un toque frío casi imperceptible)
+BG        = "#0b0c0e"   # fondo de la ventana
+SURFACE   = "#131417"   # tarjetas
+SURFACE_2 = "#1b1c20"   # elementos elevados, pestaña activa, hover
+INPUT     = "#0f1012"   # campos de texto
+BORDER    = "#222327"
+BORDER_HI = "#2f3036"
+TEXT      = "#ededef"
+TEXT_2    = "#b0b1b8"
+MUTED     = "#83848c"
+FAINT     = "#6d6e75"   # mínimo ~3.6:1 sobre SURFACE para texto pequeño
+WHITE     = "#ffffff"
+
+# colores de estado
+RED   = "#ef6461"
+AMBER = "#e8a33d"
+GREEN = "#3fb67f"
+
+# acentos curados: (nombre i18n, color). Todos con contraste suficiente
+# para texto blanco encima y legibles sobre el fondo oscuro.
+ACCENTS = {
+    "indigo": "#6b6ff0",
+    "blue":   "#3b82f6",
+    "teal":   "#14a39a",
+    "rose":   "#e0577f",
+    "mono":   "#e6e6ea",
+}
+DEFAULT_ACCENT = "indigo"
+
+
+def _load_accent_key() -> str:
+    try:
+        import config
+        key = config.load().get("accent", DEFAULT_ACCENT)
+    except Exception:
+        key = DEFAULT_ACCENT
+    return key if key in ACCENTS else DEFAULT_ACCENT
+
+
+def _luma(hex_color: str) -> float:
+    c = QColor(hex_color)
+    return 0.2126 * c.redF() + 0.7152 * c.greenF() + 0.0722 * c.blueF()
+
+
+def contrast(a: str, b: str) -> float:
+    """Relación de contraste WCAG 2 entre dos colores (1–21)."""
+    def rel(hex_color: str) -> float:
+        c = QColor(hex_color)
+        lin = [v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+               for v in (c.redF(), c.greenF(), c.blueF())]
+        return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    hi, lo = sorted((rel(a), rel(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def solid_for_text(color: str, text: str, target: float = 4.6) -> str:
+    """Oscurece (o aclara) color lo justo para que text encima cumpla WCAG AA."""
+    toward = "#000000" if QColor(text).lightness() > 128 else WHITE
+    t = 0.0
+    out = color
+    while contrast(out, text) < target and t < 1.0:
+        t += 0.01
+        out = mix(color, toward, t)
+    return out
+
+
+def on_color(bg: str) -> str:
+    """Color de texto/icono legible sobre bg."""
+    return "#111114" if _luma(bg) > 0.6 else WHITE
+
+
+ACCENT_KEY = _load_accent_key()                  # se fija al arrancar
+ACCENT    = ACCENTS[ACCENT_KEY]
+ACCENT_HI = mix(ACCENT, WHITE, 0.15)              # hover
+ON_ACCENT = on_color(ACCENT)                      # texto sobre el acento
+# fondo sólido para botones con texto: el acento ajustado a contraste AA
+ACCENT_SOLID    = solid_for_text(ACCENT, ON_ACCENT)
+ACCENT_SOLID_HI = mix(ACCENT_SOLID, WHITE if ON_ACCENT == WHITE else "#000000", 0.08)
+ACCENT_BG = mix(SURFACE, ACCENT, 0.12)            # tintes suaves
+ACCENT_BORDER = mix(SURFACE, ACCENT, 0.35)
+
+# variantes derivadas de los colores de estado
+RED_HI      = mix(RED, WHITE, 0.2)
+RED_TEXT    = mix(RED, WHITE, 0.3)
+RED_BG      = mix(BG, RED, 0.10)
+RED_BG_HI   = mix(BG, RED, 0.18)
+RED_BORDER  = mix(BG, RED, 0.35)
+AMBER_TEXT  = mix(AMBER, WHITE, 0.3)
+AMBER_BG    = mix(BG, AMBER, 0.10)
+AMBER_BORDER = mix(BG, AMBER, 0.35)
+GREEN_HI    = mix(GREEN, WHITE, 0.3)
+GREEN_BG    = mix(BG, GREEN, 0.12)
+HERO_BG     = ACCENT_BG
+HERO_BORDER = ACCENT_BORDER
+CODE        = TEXT_2
+
+# compatibilidad con nombres anteriores
+ORANGE = AMBER
 
 STATE_COLORS = {
     "idle":       ACCENT,
@@ -120,7 +222,7 @@ QMenu::item {{
     border-radius: 4px;
 }}
 QMenu::item:selected {{
-    background: {ACCENT};
+    background: {SURFACE_2};
 }}
 QMenu::separator {{
     height: 1px;
@@ -131,7 +233,8 @@ QComboBox QAbstractItemView {{
     background: {SURFACE};
     border: 1px solid {BORDER_HI};
     color: {TEXT};
-    selection-background-color: {ACCENT};
+    selection-background-color: {SURFACE_2};
+    selection-color: {TEXT};
     outline: none;
 }}
 QDialog QPushButton, QMessageBox QPushButton {{
@@ -146,8 +249,9 @@ QDialog QPushButton:hover, QMessageBox QPushButton:hover {{
     background: {BORDER};
 }}
 QDialog QPushButton:default, QMessageBox QPushButton:default {{
-    background: {ACCENT};
-    border-color: {ACCENT};
+    background: {ACCENT_SOLID};
+    border-color: {ACCENT_SOLID};
+    color: {ON_ACCENT};
 }}
 QDialog QLineEdit {{
     background: {INPUT};
@@ -191,9 +295,10 @@ def app_icon(state: str = "idle", size: int = 64) -> QIcon:
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     s = size / 64.0
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QColor(STATE_COLORS.get(state, ACCENT)))
+    color = STATE_COLORS.get(state, ACCENT)
+    p.setBrush(QColor(color))
     p.drawEllipse(QRectF(2 * s, 2 * s, 60 * s, 60 * s))
-    draw_mic(p, QRectF(0, 0, size, size), QColor("#ffffff"))
+    draw_mic(p, QRectF(0, 0, size, size), QColor(on_color(color)))
     p.end()
     return QIcon(pm)
 

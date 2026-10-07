@@ -165,7 +165,7 @@ class MicButton(QWidget):
             p.drawArc(QRectF(c.x() - arc_r, c.y() - arc_r, arc_r * 2, arc_r * 2), start, 100 * 16)
 
         # icono central
-        white = QColor("#ffffff")
+        white = QColor(theme.on_color(color.name()))   # legible sobre el círculo
         if self._state in ("done", "done_no_ai"):
             pen = QPen(white, 4.5)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -257,6 +257,80 @@ class ToggleSwitch(QCheckBox):
         # botón
         d = self.TRACK_H - 4
         x = track.x() + 2 + (self.TRACK_W - d - 4) * self._pos
-        p.setBrush(QColor("#ffffff"))
+        knob = QColor(theme.ON_ACCENT) if self._pos > 0.5 else QColor(theme.WHITE)
+        p.setBrush(knob)
         p.drawEllipse(QRectF(x, track.y() + 2, d, d))
+        p.end()
+
+
+class AccentPicker(QWidget):
+    """Fila de círculos de color para elegir el acento de la interfaz."""
+    changed = pyqtSignal(str)
+
+    D, GAP = 22, 10
+
+    def __init__(self, accents: dict, names: dict, parent=None):
+        super().__init__(parent)
+        self._accents = accents          # clave → color
+        self._keys = list(accents)
+        self._names = names              # clave → nombre para el tooltip
+        self._value = self._keys[0]
+        self._hover = -1
+        self.setMouseTracking(True)
+        self.setFixedHeight(self.D + 10)
+        self.setMinimumWidth(len(self._keys) * (self.D + self.GAP))
+
+    def value(self) -> str:
+        return self._value
+
+    def set_value(self, key: str):
+        if key in self._accents:
+            self._value = key
+            self.update()
+
+    def _index_at(self, pos) -> int:
+        for i in range(len(self._keys)):
+            if self._rect(i).adjusted(-3, -3, 3, 3).contains(pos):
+                return i
+        return -1
+
+    def _rect(self, i: int) -> QRectF:
+        return QRectF(5 + i * (self.D + self.GAP), 5, self.D, self.D)
+
+    def mouseMoveEvent(self, e):
+        i = self._index_at(e.position())
+        if i != self._hover:
+            self._hover = i
+            self.setCursor(Qt.CursorShape.PointingHandCursor if i >= 0 else Qt.CursorShape.ArrowCursor)
+            self.setToolTip(self._names.get(self._keys[i], "") if i >= 0 else "")
+            self.update()
+
+    def leaveEvent(self, e):
+        self._hover = -1
+        self.update()
+
+    def mousePressEvent(self, e):
+        i = self._index_at(e.position())
+        if i >= 0 and self._keys[i] != self._value:
+            self._value = self._keys[i]
+            self.update()
+            self.changed.emit(self._value)
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        for i, key in enumerate(self._keys):
+            r = self._rect(i)
+            color = QColor(self._accents[key])
+            if key == self._value:
+                p.setPen(QPen(color, 2))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(r.adjusted(-4, -4, 4, 4))
+            elif i == self._hover:
+                p.setPen(QPen(QColor(theme.BORDER_HI), 2))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(r.adjusted(-4, -4, 4, 4))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(color)
+            p.drawEllipse(r)
         p.end()

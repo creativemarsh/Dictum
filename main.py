@@ -36,6 +36,7 @@ def main():
     QLocalServer.removeServer(INSTANCE_KEY)   # restos de un cierre abrupto
     server.listen(INSTANCE_KEY)
     server.newConnection.connect(lambda: (server.nextPendingConnection(), window._show_window()))
+    window.instance_server = server
 
     window.move(100, 100)   # force on-screen position
     window.show()

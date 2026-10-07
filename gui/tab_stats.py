@@ -4,7 +4,6 @@ Panel de estadísticas de uso.
 """
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QFrame
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
 import config
 import history
 from core.i18n import t
@@ -21,29 +20,28 @@ STYLE_CARD = f"""
 STYLE_HERO = f"""
     QFrame#card {{
         background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #13261f, stop:1 {theme.SURFACE});
-        border: 1px solid #1f4434;
+                    stop:0 {theme.HERO_BG}, stop:1 {theme.SURFACE});
+        border: 1px solid {theme.HERO_BORDER};
         border-radius: 12px;
     }}
 """
 
 # (símbolo, color) de cada métrica
 ICONS = {
-    "words_total":    ("✦", theme.ACCENT_HI),
-    "wpm":            ("⚡", theme.ORANGE),
-    "time_recorded":  ("◷", theme.RED),
-    "sessions_total": ("◎", "#5ab4f0"),
-    "ai_corrections": ("✧", "#d08cf5"),
+    "words_total":    ("✦", theme.TEXT_2),
+    "wpm":            ("⚡", theme.TEXT_2),
+    "time_recorded":  ("◷", theme.TEXT_2),
+    "sessions_total": ("◎", theme.TEXT_2),
+    "ai_corrections": ("✧", theme.TEXT_2),
 }
 
 
 def _icon_badge(glyph: str, color: str) -> QLabel:
-    c = QColor(color)
     lbl = QLabel(glyph)
     lbl.setFixedSize(30, 30)
     lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
     lbl.setStyleSheet(
-        f"background: rgba({c.red()}, {c.green()}, {c.blue()}, 38);"
+        f"background: {theme.SURFACE_2};"
         f"border-radius: 15px; color: {color}; font-size: 14px;")
     return lbl
 
@@ -93,7 +91,7 @@ class HeroCard(QFrame):
         lay.setContentsMargins(18, 14, 18, 16)
         lay.setSpacing(2)
         title = QLabel(t("stat_saved").upper())
-        title.setStyleSheet(f"font-size: 10px; font-weight: 700; letter-spacing: 1px; color: {theme.GREEN};")
+        title.setStyleSheet(f"font-size: 10px; font-weight: 700; letter-spacing: 1px; color: {theme.ACCENT_HI};")
         lay.addWidget(title)
         self.value = QLabel("0 s")
         self.value.setStyleSheet(f"font-size: 34px; font-weight: 700; color: {theme.TEXT};")
@@ -139,7 +137,7 @@ class StatsTab(QWidget):
 
         # última transcripción
         last_lbl = QLabel(t("stat_last").upper())
-        last_lbl.setStyleSheet("font-size: 10px; font-weight: 600; color: #5d5e6b; letter-spacing: 1px;")
+        last_lbl.setStyleSheet(f"font-size: 10px; font-weight: 600; color: {theme.FAINT}; letter-spacing: 1px;")
         layout.addWidget(last_lbl)
 
         self._last_text = QLabel("—")

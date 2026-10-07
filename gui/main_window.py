@@ -2,14 +2,15 @@
 main_window.py
 Ventana principal de Dictum con tabs: Transcripción / Estadísticas / Ajustes
 """
+import sys
 import time
 import pyperclip
 import keyboard
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QTabWidget, QSystemTrayIcon, QMenu,
-    QApplication,
+    QApplication, QMessageBox,
 )
-from PyQt6.QtCore import QTimer, pyqtSlot
+from PyQt6.QtCore import QTimer, QProcess, pyqtSlot
 from PyQt6.QtGui import QAction
 
 import config
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(theme.STYLE)
         self.setWindowIcon(theme.app_icon())
         self._tray_hint_shown = False
+        self.instance_server = None   # lo asigna main.py (instancia única)
 
         self._setup_core()
         self._setup_ui()
@@ -135,6 +137,7 @@ class MainWindow(QMainWindow):
 
         # settings saved
         self._tab_settings.saved.connect(self._on_settings_saved)
+        self._tab_settings.restart_requested.connect(self._offer_restart)
 
     def _start_hotkey(self):
         cfg = config.load()
@@ -327,6 +330,27 @@ class MainWindow(QMainWindow):
         self._tray.hide()
         self._tab_settings.shutdown()
         QApplication.quit()
+
+    @pyqtSlot()
+    def _offer_restart(self):
+        box = QMessageBox(QMessageBox.Icon.Question, t("restart_title"), t("restart_msg"),
+                          parent=self)
+        restart = box.addButton(t("btn_restart"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(t("btn_later"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(restart)
+        box.exec()
+        if box.clickedButton() is restart:
+            self.restart()
+
+    def restart(self):
+        """Relanza Dictum (mismo ejecutable y argumentos) y cierra este proceso."""
+        if self.instance_server is not None:
+            self.instance_server.close()   # que la nueva instancia no nos encuentre
+        if getattr(sys, "frozen", False):
+            QProcess.startDetached(sys.executable, sys.argv[1:])
+        else:
+            QProcess.startDetached(sys.executable, sys.argv)
+        self._quit()
 
     def _show_window(self, tab=None):
         if tab is not None:
