@@ -363,8 +363,13 @@ class ConfigTest(unittest.TestCase):
             self.assertGreaterEqual(theme.contrast(solid, on), 4.5, key)
             # el acento como elemento gráfico sobre el fondo: 3:1
             self.assertGreaterEqual(theme.contrast(color, theme.BG), 3.0, key)
-        for name in ("TEXT", "TEXT_2", "MUTED"):
-            self.assertGreaterEqual(theme.contrast(getattr(theme, name), theme.SURFACE), 4.5, name)
+        for base, values in theme.BASES.items():
+            c = dict(zip(theme._BASE_KEYS, values))
+            for name in ("TEXT", "TEXT_2", "MUTED"):
+                self.assertGreaterEqual(theme.contrast(c[name], c["SURFACE"]), 4.5, (base, name))
+            self.assertGreaterEqual(theme.contrast(c["FAINT"], c["SURFACE"]), 3.5, (base, "FAINT"))
+            for key, color in theme.ACCENTS.items():
+                self.assertGreaterEqual(theme.contrast(color, c["BG"]), 3.0, (base, key))
 
     def test_defaults_are_not_shared_between_loads(self):
         a = config.load()

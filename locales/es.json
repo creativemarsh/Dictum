@@ -156,9 +156,14 @@
   "accent_blue": "Azul",
   "accent_teal": "Turquesa",
   "accent_rose": "Rosa",
-  "accent_mono": "Grafito",
+  "accent_mono": "Monocromo",
   "restart_title": "¿Reiniciar Dictum?",
   "restart_msg": "El nuevo idioma o color se aplica al reiniciar Dictum. ¿Reiniciar ahora?",
   "btn_restart": "Reiniciar ahora",
-  "btn_later": "Más tarde"
+  "btn_later": "Más tarde",
+  "base_color": "Fondo",
+  "base_graphite": "Grafito",
+  "base_ink": "Tinta",
+  "base_midnight": "Medianoche",
+  "base_charcoal": "Carbón"
 }

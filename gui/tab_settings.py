@@ -709,6 +709,14 @@ class SettingsTab(QWidget):
         row_acc.addStretch()
         mlay.addLayout(row_acc)
 
+        row_base = QHBoxLayout()
+        row_base.addWidget(label(t("base_color")))
+        self._base_picker = AccentPicker(
+            theme.BASE_SWATCHES, {k: t(f"base_{k}") for k in theme.BASES})
+        row_base.addWidget(self._base_picker)
+        row_base.addStretch()
+        mlay.addLayout(row_base)
+
         row_lang = QHBoxLayout()
         row_lang.addWidget(label(t("dictation_lang")))
         self._lang_combo = NoScrollComboBox()
@@ -834,6 +842,7 @@ class SettingsTab(QWidget):
         ui_lang_map = {"en": 0, "es": 1}
         self._ui_lang_combo.setCurrentIndex(ui_lang_map.get(ui_lang, 0))
         self._accent_picker.set_value(c.get("accent", theme.DEFAULT_ACCENT))
+        self._base_picker.set_value(c.get("base", theme.DEFAULT_BASE))
 
         self._auto_paste_cb.setChecked(c.get("auto_paste", False))
         self._play_sounds_cb.setChecked(c.get("play_sounds", True))
@@ -959,9 +968,11 @@ class SettingsTab(QWidget):
         ui_lang_map = {0: "en", 1: "es"}
         cfg["ui_language"] = ui_lang_map.get(self._ui_lang_combo.currentIndex(), "en")
         cfg["accent"] = self._accent_picker.value()
+        cfg["base"] = self._base_picker.value()
         # idioma y color se aplican al construir la interfaz: hace falta reiniciar
         needs_restart = (cfg["ui_language"] != t_lang_loaded()
-                         or cfg["accent"] != theme.ACCENT_KEY)
+                         or cfg["accent"] != theme.ACCENT_KEY
+                         or cfg["base"] != theme.BASE_KEY)
 
         cfg["auto_paste"] = self._auto_paste_cb.isChecked()
         cfg["play_sounds"] = self._play_sounds_cb.isChecked()

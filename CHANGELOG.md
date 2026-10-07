@@ -8,7 +8,10 @@ All notable changes to this project will be documented in this file.
 - New colour system (`gui/theme.py`): layered neutral surfaces, a single
   accent colour, and red/amber/green only for states. No colour is
   hard-coded outside the theme any more
-- Accent colour picker in Settings (Indigo, Blue, Teal, Rose, Graphite).
+- Background picker in Settings with four tinted neutral families: Ink
+  (default, deep blue), Midnight (violet), Charcoal (warm) and Graphite
+  (neutral). Tinted neutrals give the dark UI depth instead of flat black
+- Accent colour picker in Settings (Indigo, Blue, Teal, Rose, Mono).
   Text on the accent is adjusted to meet WCAG AA contrast, checked by a test
 - Changing the accent or the interface language offers to restart Dictum
   instead of asking you to restart it by hand

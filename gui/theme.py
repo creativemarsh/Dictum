@@ -28,18 +28,49 @@ def mix(a: str, b: str, t: float) -> str:
     ).name()
 
 
-# neutros (gris con un toque frío casi imperceptible)
-BG        = "#0b0c0e"   # fondo de la ventana
-SURFACE   = "#131417"   # tarjetas
-SURFACE_2 = "#1b1c20"   # elementos elevados, pestaña activa, hover
-INPUT     = "#0f1012"   # campos de texto
-BORDER    = "#222327"
-BORDER_HI = "#2f3036"
-TEXT      = "#ededef"
-TEXT_2    = "#b0b1b8"
-MUTED     = "#83848c"
-FAINT     = "#6d6e75"   # mínimo ~3.6:1 sobre SURFACE para texto pequeño
-WHITE     = "#ffffff"
+# Bases: familias de neutros. Cada una mantiene los mismos saltos de
+# claridad entre niveles; solo cambia el matiz (y un poco la saturación).
+_BASE_KEYS = ("BG", "SURFACE", "SURFACE_2", "INPUT", "BORDER", "BORDER_HI",
+              "TEXT", "TEXT_2", "MUTED", "FAINT")
+BASES = {
+    # gris neutro casi negro
+    "graphite": ("#0b0c0e", "#131417", "#1b1c20", "#0f1012", "#222327", "#2f3036",
+                 "#ededef", "#b0b1b8", "#83848c", "#6d6e75"),
+    # azul tinta: frío, sereno, "herramienta de trabajo"
+    "ink":      ("#0e121a", "#151b26", "#1d2433", "#11161f", "#252d3c", "#323b4d",
+                 "#e8ecf3", "#a9b3c4", "#7f8a9e", "#6a7488"),
+    # violeta noche: acompaña al índigo, más personalidad
+    "midnight": ("#100f19", "#181726", "#201e33", "#13121d", "#29263b", "#363250",
+                 "#edebf5", "#b2aec8", "#86829d", "#706c88"),
+    # carbón cálido: oscuro "de papel", contrasta con acentos fríos
+    "charcoal": ("#131211", "#1b1a18", "#242220", "#161514", "#2c2a27", "#3a3733",
+                 "#efede9", "#bab6ae", "#8e8a82", "#77736c"),
+}
+DEFAULT_BASE = "ink"
+
+# color representativo de cada base para el selector de Ajustes (los fondos
+# reales son tan oscuros que no se distinguirían en una muestra pequeña)
+BASE_SWATCHES = {
+    "graphite": "#45464d",
+    "ink":      "#2f4366",
+    "midnight": "#43386e",
+    "charcoal": "#59524a",
+}
+
+
+def _load_key(name: str, options: dict, default: str) -> str:
+    try:
+        import config
+        key = config.load().get(name, default)
+    except Exception:
+        key = default
+    return key if key in options else default
+
+
+BASE_KEY = _load_key("base", BASES, DEFAULT_BASE)   # se fija al arrancar
+(BG, SURFACE, SURFACE_2, INPUT, BORDER, BORDER_HI,
+ TEXT, TEXT_2, MUTED, FAINT) = BASES[BASE_KEY]
+WHITE = "#ffffff"
 
 # colores de estado
 RED   = "#ef6461"
@@ -56,15 +87,6 @@ ACCENTS = {
     "mono":   "#e6e6ea",
 }
 DEFAULT_ACCENT = "indigo"
-
-
-def _load_accent_key() -> str:
-    try:
-        import config
-        key = config.load().get("accent", DEFAULT_ACCENT)
-    except Exception:
-        key = DEFAULT_ACCENT
-    return key if key in ACCENTS else DEFAULT_ACCENT
 
 
 def _luma(hex_color: str) -> float:
@@ -99,7 +121,7 @@ def on_color(bg: str) -> str:
     return "#111114" if _luma(bg) > 0.6 else WHITE
 
 
-ACCENT_KEY = _load_accent_key()                  # se fija al arrancar
+ACCENT_KEY = _load_key("accent", ACCENTS, DEFAULT_ACCENT)   # se fija al arrancar
 ACCENT    = ACCENTS[ACCENT_KEY]
 ACCENT_HI = mix(ACCENT, WHITE, 0.15)              # hover
 ON_ACCENT = on_color(ACCENT)                      # texto sobre el acento

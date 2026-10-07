@@ -323,7 +323,9 @@ class AccentPicker(QWidget):
             r = self._rect(i)
             color = QColor(self._accents[key])
             if key == self._value:
-                p.setPen(QPen(color, 2))
+                # anillo del mismo color, salvo que no se distinga de la tarjeta
+                ring = color if theme.contrast(color.name(), theme.SURFACE) >= 3 else QColor(theme.TEXT_2)
+                p.setPen(QPen(ring, 2))
                 p.setBrush(Qt.BrushStyle.NoBrush)
                 p.drawEllipse(r.adjusted(-4, -4, 4, 4))
             elif i == self._hover:
