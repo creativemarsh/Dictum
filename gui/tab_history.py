@@ -1,14 +1,14 @@
-import pyperclip
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QScrollArea,
+    QFrame, QScrollArea, QMessageBox,
 )
 from PyQt6.QtCore import Qt
 import history as hist
 from core.i18n import t
+from gui.copy_button import CopyButton
 
 STYLE_CARD = """
-    QFrame {
+    QFrame#card {
         background: #111116;
         border: 1px solid #2c2c2a;
         border-radius: 8px;
@@ -41,6 +41,7 @@ STYLE_BTN_DANGER = """
 class HistoryCard(QFrame):
     def __init__(self, entry: dict, parent=None):
         super().__init__(parent)
+        self.setObjectName("card")   # el estilo no debe heredarse a los QLabel hijos
         self.setStyleSheet(STYLE_CARD)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)
@@ -58,10 +59,8 @@ class HistoryCard(QFrame):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        copy_btn = QPushButton(t("btn_copy"))
-        copy_btn.setStyleSheet(STYLE_BTN)
         _text = entry.get("text", "")
-        copy_btn.clicked.connect(lambda: pyperclip.copy(_text))
+        copy_btn = CopyButton(lambda: _text, STYLE_BTN, padding="4px 10px", font_size="11px")
         btn_row.addWidget(copy_btn)
         layout.addLayout(btn_row)
 
@@ -132,5 +131,14 @@ class HistoryTab(QWidget):
         self._count_lbl.setText(f"{t('hist_title').lower()} — {n}")
 
     def _clear(self):
+        if not hist.load():
+            return
+        answer = QMessageBox.question(
+            self, t("hist_clear"), t("hist_clear_confirm"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
         hist.clear()
         self.refresh()

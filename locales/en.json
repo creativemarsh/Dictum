@@ -70,5 +70,19 @@
   "llm_desc": "The AI model takes the raw text from Whisper and cleans it: removes filler words, applies verbal corrections, and respects your vocabulary.",
   "ollama_url": "Ollama Base URL",
   "refresh_models": "Refresh models",
-  "btn_close": "Close"
+  "btn_close": "Close",
+
+  "btn_copied": "copied ✓",
+  "show_overlay": "Show floating indicator while dictating",
+  "esc_cancels": "Press Esc to cancel an active dictation",
+  "overlay_recording": "Recording",
+  "overlay_processing": "Processing",
+  "overlay_done": "Copied to clipboard ✓",
+  "overlay_pasted": "Pasted ✓",
+  "overlay_done_no_ai": "Copied (without AI) ⚠",
+  "overlay_cancelled": "Cancelled",
+  "overlay_no_speech": "No speech detected",
+  "overlay_error": "Error",
+  "overlay_esc_hint": "Esc to cancel",
+  "hist_clear_confirm": "Delete all transcription history? This cannot be undone."
 }

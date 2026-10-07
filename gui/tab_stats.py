@@ -8,7 +8,7 @@ import config
 from core.i18n import t
 
 STYLE_CARD = """
-    QFrame {
+    QFrame#card {
         background: #111116;
         border: 1px solid #2c2c2a;
         border-radius: 8px;
@@ -28,6 +28,7 @@ ICONS = {
 class StatCard(QFrame):
     def __init__(self, icon: str, label: str, value: str, parent=None):
         super().__init__(parent)
+        self.setObjectName("card")   # el estilo no debe heredarse a los QLabel hijos
         self.setStyleSheet(STYLE_CARD)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)

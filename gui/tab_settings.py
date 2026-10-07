@@ -12,7 +12,7 @@ import config
 from core.i18n import t
 
 STYLE_SECTION = """
-    QFrame {
+    QFrame#card {
         background: #111116;
         border: 1px solid #2c2c2a;
         border-radius: 8px;
@@ -119,6 +119,7 @@ STYLE_TEXTAREA = """
 
 def section(title: str) -> tuple[QFrame, QVBoxLayout]:
     frame = QFrame()
+    frame.setObjectName("card")   # el estilo no debe heredarse a los QLabel hijos
     frame.setStyleSheet(STYLE_SECTION)
     layout = QVBoxLayout(frame)
     layout.setContentsMargins(14, 12, 14, 12)
@@ -425,7 +426,6 @@ class SettingsTab(QWidget):
         gen_row.addWidget(self._gen_input)
         self._gen_btn = QPushButton("✨ Generar perfil")
         self._gen_btn.setStyleSheet(STYLE_BTN_PRIMARY)
-        self._gen_btn.setFixedWidth(120)
         self._gen_btn.clicked.connect(self._generate_profile)
         gen_row.addWidget(self._gen_btn)
         play.addLayout(gen_row)
@@ -697,6 +697,14 @@ class SettingsTab(QWidget):
         self._play_sounds_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
         mlay.addWidget(self._play_sounds_cb)
 
+        self._show_overlay_cb = QCheckBox(f" {t('show_overlay')}")
+        self._show_overlay_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
+        mlay.addWidget(self._show_overlay_cb)
+
+        self._esc_cancels_cb = QCheckBox(f" {t('esc_cancels')}")
+        self._esc_cancels_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
+        mlay.addWidget(self._esc_cancels_cb)
+
         layout.addWidget(frm_misc)
 
         # ── Guardar ────────────────────────────────────────────────────────
@@ -783,6 +791,8 @@ class SettingsTab(QWidget):
 
         self._auto_paste_cb.setChecked(c.get("auto_paste", False))
         self._play_sounds_cb.setChecked(c.get("play_sounds", True))
+        self._show_overlay_cb.setChecked(c.get("show_overlay", True))
+        self._esc_cancels_cb.setChecked(c.get("esc_cancels", True))
 
         self._fetch_ollama_models()
 
@@ -887,6 +897,8 @@ class SettingsTab(QWidget):
 
         cfg["auto_paste"] = self._auto_paste_cb.isChecked()
         cfg["play_sounds"] = self._play_sounds_cb.isChecked()
+        cfg["show_overlay"] = self._show_overlay_cb.isChecked()
+        cfg["esc_cancels"] = self._esc_cancels_cb.isChecked()
 
         config.save(cfg)
         self._cfg = cfg

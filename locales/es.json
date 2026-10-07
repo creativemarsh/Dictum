@@ -70,5 +70,19 @@
   "llm_desc": "El modelo de IA toma el texto crudo de Whisper y lo limpia: elimina muletillas, aplica correcciones verbales y respeta tu vocabulario.",
   "ollama_url": "URL base Ollama",
   "refresh_models": "Refrescar modelos",
-  "btn_close": "Cerrar"
+  "btn_close": "Cerrar",
+
+  "btn_copied": "copiado ✓",
+  "show_overlay": "Mostrar indicador flotante al dictar",
+  "esc_cancels": "Pulsar Esc cancela el dictado en curso",
+  "overlay_recording": "Grabando",
+  "overlay_processing": "Procesando",
+  "overlay_done": "Copiado al portapapeles ✓",
+  "overlay_pasted": "Pegado ✓",
+  "overlay_done_no_ai": "Copiado (sin IA) ⚠",
+  "overlay_cancelled": "Cancelado",
+  "overlay_no_speech": "No se detectó voz",
+  "overlay_error": "Error",
+  "overlay_esc_hint": "Esc para cancelar",
+  "hist_clear_confirm": "¿Borrar todo el historial de transcripciones? No se puede deshacer."
 }

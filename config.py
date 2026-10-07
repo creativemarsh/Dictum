@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 from pathlib import Path
@@ -9,6 +10,8 @@ DEFAULTS = {
     "hotkey_mode": "hold",            # "hold" | "toggle"
     "auto_paste": False,              # Simular Ctrl+V
     "play_sounds": True,              # Sonidos de feedback
+    "show_overlay": True,             # Widget flotante durante el dictado
+    "esc_cancels": True,              # Escape global cancela el dictado
     "whisper_mode": "local",          # "local" | "api"
     "whisper_model": "medium",        # tiny, base, small, medium, large-v2
     "whisper_device": "auto",         # "auto" | "cuda" | "cpu"
@@ -51,11 +54,9 @@ def load() -> dict:
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # merge con defaults para claves nuevas
-            for k, v in DEFAULTS.items():
-                if k not in data:
-                    data[k] = v
-            # Migración de perfil antiguo a multi-perfil
+            # Migración de perfil antiguo a multi-perfil (antes de mezclar defaults,
+            # si no "profiles" ya existiría y la migración nunca correría)
+            migrated = False
             if "user_profile" in data and "profiles" not in data:
                 old_prof = data.pop("user_profile")
                 data["profiles"] = [{
@@ -65,17 +66,36 @@ def load() -> dict:
                     "custom_terms": old_prof.get("custom_terms", "")
                 }]
                 data["active_profile_id"] = "default"
+                migrated = True
+            # merge con defaults para claves nuevas
+            for k, v in DEFAULTS.items():
+                if k not in data:
+                    data[k] = copy.deepcopy(v)
+            if migrated:
                 save(data)
             return data
         except (json.JSONDecodeError, ValueError):
             pass  # archivo vacío o corrupto — usar defaults
-    return dict(DEFAULTS)
+    return copy.deepcopy(DEFAULTS)
 
 
 def save(cfg: dict):
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+
+def get_active_profile(cfg: dict) -> dict:
+    """Devuelve el perfil activo (o el primero, o uno vacío)."""
+    profiles = cfg.get("profiles") or []
+    active_id = cfg.get("active_profile_id", "default")
+    for p in profiles:
+        if p.get("id") == active_id:
+            return p
+    if profiles:
+        return profiles[0]
+    # compatibilidad con configs antiguas sin migrar
+    return cfg.get("user_profile", {}) or {}
 
 
 def update_stat(key: str, delta):

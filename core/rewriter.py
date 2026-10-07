@@ -38,7 +38,7 @@ Output: "Hazme una lista de compra: naranja, pera, manzana."
 
 
 def build_system_prompt(cfg: dict) -> str:
-    profile = cfg.get("user_profile", {})
+    profile = config.get_active_profile(cfg)
     role    = profile.get("role", "").strip()
     terms   = profile.get("custom_terms", "").strip()
 
@@ -266,9 +266,21 @@ class Rewriter(QObject):
         self._sigs = None  # Evita que se elimine por recolección de basura
 
     def rewrite(self, raw_text: str):
+        self.cancel()   # un resultado viejo nunca debe pisar al nuevo
         self._sigs = RewriteSignals()
         self._sigs.done.connect(self.done)
         self._sigs.error.connect(self.error)
         task = RewriteTask(raw_text, self._sigs)
         task.setAutoDelete(True)
         self._pool.start(task)
+
+    def cancel(self):
+        """Descarta el resultado de la reescritura en curso (si la hay)."""
+        if self._sigs is None:
+            return
+        for sig in (self._sigs.done, self._sigs.error):
+            try:
+                sig.disconnect()
+            except TypeError:
+                pass
+        self._sigs = None
