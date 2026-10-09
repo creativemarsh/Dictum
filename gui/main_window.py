@@ -2,16 +2,16 @@
 main_window.py
 Ventana principal de Dictum con tabs: Transcripción / Estadísticas / Ajustes
 """
+import sys
 import time
 import pyperclip
 import keyboard
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QTabWidget, QSystemTrayIcon, QMenu,
-    QApplication,
+    QMainWindow, QWidget, QVBoxLayout, QTabWidget, QSystemTrayIcon, QMenu,
+    QApplication, QMessageBox,
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSlot
-from PyQt6.QtGui import QIcon, QAction
+from PyQt6.QtCore import QTimer, QProcess, pyqtSlot
+from PyQt6.QtGui import QAction
 
 import config
 from core.audio_capture import AudioRecorder, HotkeyListener
@@ -24,56 +24,14 @@ from gui.tab_stats      import StatsTab
 from gui.tab_settings   import SettingsTab
 from gui.tab_history    import HistoryTab
 from gui.overlay        import DictationOverlay
+from gui                import theme
 from core.i18n import t
 
 # Pulsaciones más cortas que esto se consideran accidentales: Whisper tiende a
 # "alucinar" texto con fragmentos de audio tan breves.
 MIN_RECORDING_S = 0.35
 
-STYLE = """
-QMainWindow, QWidget {
-    background: #1a1a1f;
-    color: #e8e6e3;
-    font-family: 'Segoe UI', sans-serif;
-    font-size: 13px;
-}
-QTabWidget::pane {
-    border: none;
-    background: #1a1a1f;
-}
-QTabBar::tab {
-    background: transparent;
-    color: #888780;
-    padding: 8px 20px;
-    border-bottom: 2px solid transparent;
-    font-size: 12px;
-}
-QTabBar::tab:selected {
-    color: #e8e6e3;
-    border-bottom: 2px solid #534AB7;
-    font-weight: 500;
-}
-QTabBar::tab:hover {
-    color: #b4b2a9;
-}
-QFrame#card QLabel, QFrame#card QCheckBox {
-    background: transparent;
-}
-QCheckBox::indicator {
-    width: 14px;
-    height: 14px;
-    border: 1px solid #444441;
-    border-radius: 4px;
-    background: #0d0d12;
-}
-QCheckBox::indicator:hover {
-    border-color: #534AB7;
-}
-QCheckBox::indicator:checked {
-    background: #534AB7;
-    border-color: #534AB7;
-}
-"""
+
 
 
 class MainWindow(QMainWindow):
@@ -81,8 +39,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Dictum")
         self.setMinimumWidth(380)
-        self.setMinimumHeight(480)
-        self.setStyleSheet(STYLE)
+        self.setMinimumHeight(520)
+        self.resize(440, 600)
+        self.setStyleSheet(theme.STYLE)
+        self.setWindowIcon(theme.app_icon())
+        self._tray_hint_shown = False
+        self.instance_server = None   # lo asigna main.py (instancia única)
 
         self._setup_core()
         self._setup_ui()
@@ -110,10 +72,6 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # titlebar
-        titlebar = self._make_titlebar()
-        layout.addWidget(titlebar)
-
         # tabs
         self._tabs = QTabWidget()
         self._tabs.setDocumentMode(True)
@@ -129,90 +87,35 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._tab_history,    t("tab_history"))
         self._tabs.addTab(self._tab_settings,   t("tab_settings"))
 
-    def _make_titlebar(self) -> QWidget:
-        bar = QWidget()
-        bar.setFixedHeight(38)
-        bar.setStyleSheet("background: #111116; border-bottom: 1px solid #2c2c2a;")
-        layout = QHBoxLayout(bar)
-        layout.setContentsMargins(14, 0, 14, 0)
-
-        dots = QHBoxLayout()
-        dots.setSpacing(6)
-        for color in ["#E24B4A", "#EF9F27", "#639922"]:
-            d = QLabel()
-            d.setFixedSize(11, 11)
-            d.setStyleSheet(f"background:{color}; border-radius:5px;")
-            dots.addWidget(d)
-        layout.addLayout(dots)
-
-        title = QLabel("Dictum")
-        title.setStyleSheet("color: #888780; font-size: 13px; font-weight: 500; margin-left: 8px;")
-        layout.addWidget(title)
-        layout.addStretch()
-
-        btn_style = """
-            QPushButton { background: transparent; border: none; color: #888780; font-size: 16px; }
-            QPushButton:hover { color: #e8e6e3; }
-        """
-        btn_close_style = """
-            QPushButton { background: transparent; border: none; color: #888780; font-size: 16px; }
-            QPushButton:hover { color: #E24B4A; }
-        """
-        
-        minimize_btn = QPushButton("−")
-        minimize_btn.setFixedSize(28, 24)
-        minimize_btn.setStyleSheet(btn_style)
-        minimize_btn.clicked.connect(self.showMinimized)
-        layout.addWidget(minimize_btn)
-        
-        maximize_btn = QPushButton("□")
-        maximize_btn.setFixedSize(28, 24)
-        maximize_btn.setStyleSheet(btn_style)
-        maximize_btn.clicked.connect(lambda: self.showNormal() if self.isMaximized() else self.showMaximized())
-        layout.addWidget(maximize_btn)
-        
-        close_btn = QPushButton("✕")
-        close_btn.setFixedSize(28, 24)
-        close_btn.setStyleSheet(btn_close_style)
-        close_btn.clicked.connect(self.close)
-        layout.addWidget(close_btn)
-
-        return bar
-
     def _setup_tray(self):
         self._tray = QSystemTrayIcon(self)
         self._update_tray_icon("idle")
-        cfg = config.load()
-        self._tray.setToolTip(f"Dictum — {cfg.get('hotkey', 'alt').title()} {t('tray_record_hint', 'para grabar')}")
+        self._update_tray_tooltip()
 
-        menu = QMenu()
+        menu = QMenu(self)
         show_action = QAction(t("tray_show"), self)
+        settings_action = QAction(t("tray_settings"), self)
         quit_action = QAction(t("tray_quit"), self)
-        show_action.triggered.connect(self.show)
-        quit_action.triggered.connect(QApplication.quit)
+        show_action.triggered.connect(self._show_window)
+        settings_action.triggered.connect(lambda: self._show_window(tab=self._tab_settings))
+        quit_action.triggered.connect(self._quit)
         menu.addAction(show_action)
+        menu.addAction(settings_action)
         menu.addSeparator()
         menu.addAction(quit_action)
         self._tray.setContextMenu(menu)
         self._tray.activated.connect(self._tray_activated)
         self._tray.show()
 
+    def _hotkey_name(self) -> str:
+        from gui.tab_settings import _key_display_name
+        return _key_display_name(config.load().get("hotkey", "alt"))
+
+    def _update_tray_tooltip(self):
+        self._tray.setToolTip(f"Dictum — {t('hint_hold').format(key=self._hotkey_name())}")
+
     def _update_tray_icon(self, state: str):
-        from PyQt6.QtGui import QPixmap, QColor, QPainter
-        colors = {
-            "idle": "#534AB7",
-            "recording": "#E24B4A",
-            "processing": "#EF9F27"
-        }
-        pm = QPixmap(32, 32)
-        pm.fill(Qt.GlobalColor.transparent)
-        p = QPainter(pm)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(colors.get(state, "#534AB7")))
-        p.drawEllipse(2, 2, 28, 28)
-        p.end()
-        self._tray.setIcon(QIcon(pm))
+        self._tray.setIcon(theme.app_icon(state, 32))
 
     def _connect_signals(self):
         # recorder → UI
@@ -230,12 +133,11 @@ class MainWindow(QMainWindow):
 
         # cancel button
         self._tab_transcribe.cancel_clicked.connect(self._on_cancel)
-        
-        # tray button
-        self._tab_transcribe.tray_clicked.connect(self._to_tray)
+        self._tab_transcribe.mic_clicked.connect(self._on_mic_clicked)
 
         # settings saved
         self._tab_settings.saved.connect(self._on_settings_saved)
+        self._tab_settings.restart_requested.connect(self._offer_restart)
 
     def _start_hotkey(self):
         cfg = config.load()
@@ -301,6 +203,14 @@ class MainWindow(QMainWindow):
         mode = cfg.get("hotkey_mode", "hold")
         if mode == "hold":
             self._recorder.stop_recording()
+
+    @pyqtSlot()
+    def _on_mic_clicked(self):
+        """El botón grande funciona siempre como interruptor: empezar / terminar."""
+        if self._recorder.is_recording():
+            self._recorder.stop_recording()
+        elif not self._busy:
+            self._recorder.start_recording()
 
     @pyqtSlot()
     def _on_cancel(self):
@@ -371,7 +281,10 @@ class MainWindow(QMainWindow):
     @pyqtSlot(str)
     def _on_result_ready(self, text: str, ai_failed: bool = False, error_msg: str = ""):
         self._reset_busy()
-        self._tab_transcribe.set_result(text, ai_failed=ai_failed, error_msg=error_msg)
+        # Si Dictum es la ventana activa (se dictó con el botón), Ctrl+V pegaría
+        # el texto dentro de la propia app: en ese caso basta con el portapapeles.
+        auto_paste = config.load().get("auto_paste", False) and not self.isActiveWindow()
+        self._tab_transcribe.set_result(text, ai_failed=ai_failed, error_msg=error_msg, pasted=auto_paste)
         history.save(text)
         self._tab_history.refresh()
         word_count = len(text.split())
@@ -381,8 +294,6 @@ class MainWindow(QMainWindow):
         self._tab_stats.refresh()
         pyperclip.copy(text)
 
-        cfg = config.load()
-        auto_paste = cfg.get("auto_paste", False)
         if ai_failed:
             self._set_state("done_no_ai", error_msg.splitlines()[0] if error_msg else "")
         else:
@@ -393,30 +304,72 @@ class MainWindow(QMainWindow):
             # Aseguramos que la ventana no intercepte el ctrl+v al pegar globalmente
             QTimer.singleShot(50, lambda: keyboard.send("ctrl+v"))
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        theme.apply_dark_title_bar(self)
+
     def closeEvent(self, event):
+        # Dictum es una app de bandeja: cerrar la ventana no detiene el dictado.
+        # Para salir del todo está "Salir" en el menú del icono.
+        if self._tray.isVisible():
+            event.ignore()
+            self.hide()
+            if not self._tray_hint_shown:
+                self._tray_hint_shown = True
+                self._tray.showMessage(
+                    t("tray_hidden_title"),
+                    t("tray_hidden_msg").format(key=self._hotkey_name()),
+                    QSystemTrayIcon.MessageIcon.Information, 3000)
+            return
+        self._quit()
+
+    @pyqtSlot()
+    def _quit(self):
         self._hotkey.stop()
         self._overlay.close()
+        self._tray.hide()
+        self._tab_settings.shutdown()
         QApplication.quit()
 
     @pyqtSlot()
-    def _to_tray(self):
-        self.hide()
-        cfg = config.load()
-        self._tray.showMessage("Dictum", f"{t('tray_running', 'Corriendo en el tray')} — {cfg.get('hotkey', 'alt').title()} {t('tray_record_hint', 'para grabar')}", QSystemTrayIcon.MessageIcon.Information, 2000)
+    def _offer_restart(self):
+        box = QMessageBox(QMessageBox.Icon.Question, t("restart_title"), t("restart_msg"),
+                          parent=self)
+        restart = box.addButton(t("btn_restart"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(t("btn_later"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(restart)
+        box.exec()
+        if box.clickedButton() is restart:
+            self.restart()
+
+    def restart(self):
+        """Relanza Dictum (mismo ejecutable y argumentos) y cierra este proceso."""
+        if self.instance_server is not None:
+            self.instance_server.close()   # que la nueva instancia no nos encuentre
+        if getattr(sys, "frozen", False):
+            QProcess.startDetached(sys.executable, sys.argv[1:])
+        else:
+            QProcess.startDetached(sys.executable, sys.argv)
+        self._quit()
+
+    def _show_window(self, tab=None):
+        if tab is not None:
+            self._tabs.setCurrentWidget(tab)
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
 
     @pyqtSlot()
     def _on_settings_saved(self):
         # Reiniciar el listener con el nuevo hotkey
         self._hotkey.stop()
         self._start_hotkey()
-        new_hotkey = self._hotkey.hotkey
-        # Actualizar tray
-        self._tray.setToolTip(f"Dictum — {new_hotkey.title()} {t('tray_record_hint', 'para grabar')}")
+        self._update_tray_tooltip()
         self._tab_transcribe.refresh_hint()
         self._tab_transcribe._load_profiles()
 
     @pyqtSlot(QSystemTrayIcon.ActivationReason)
     def _tray_activated(self, reason):
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            self.show()
-            self.raise_()
+        if reason in (QSystemTrayIcon.ActivationReason.Trigger,
+                      QSystemTrayIcon.ActivationReason.DoubleClick):
+            self._show_window()

@@ -2,28 +2,48 @@
 tab_stats.py
 Panel de estadísticas de uso.
 """
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QFrame
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QFrame
 from PyQt6.QtCore import Qt
 import config
 import history
 from core.i18n import t
+from gui import theme
 
-STYLE_CARD = """
-    QFrame#card {
-        background: #111116;
-        border: 1px solid #2c2c2a;
-        border-radius: 8px;
-    }
+STYLE_CARD = f"""
+    QFrame#card {{
+        background: {theme.SURFACE};
+        border: 1px solid {theme.BORDER};
+        border-radius: 10px;
+    }}
 """
 
+STYLE_HERO = f"""
+    QFrame#card {{
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 {theme.HERO_BG}, stop:1 {theme.SURFACE});
+        border: 1px solid {theme.HERO_BORDER};
+        border-radius: 12px;
+    }}
+"""
+
+# (símbolo, color) de cada métrica
 ICONS = {
-    "words_total":    "✦",
-    "sessions_total": "◎",
-    "time_recorded":  "◷",
-    "time_saved":     "◈",
-    "wpm":            "⚡",
-    "ai_corrections": "✧",
+    "words_total":    ("✦", theme.TEXT_2),
+    "wpm":            ("⚡", theme.TEXT_2),
+    "time_recorded":  ("◷", theme.TEXT_2),
+    "sessions_total": ("◎", theme.TEXT_2),
+    "ai_corrections": ("✧", theme.TEXT_2),
 }
+
+
+def _icon_badge(glyph: str, color: str) -> QLabel:
+    lbl = QLabel(glyph)
+    lbl.setFixedSize(30, 30)
+    lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    lbl.setStyleSheet(
+        f"background: {theme.SURFACE_2};"
+        f"border-radius: 15px; color: {color}; font-size: 14px;")
+    return lbl
 
 
 def _fmt_duration(secs: int) -> str:
@@ -36,24 +56,50 @@ def _fmt_duration(secs: int) -> str:
 
 
 class StatCard(QFrame):
-    def __init__(self, icon: str, label: str, value: str, parent=None):
+    def __init__(self, key: str, label: str, value: str, parent=None):
         super().__init__(parent)
         self.setObjectName("card")   # el estilo no debe heredarse a los QLabel hijos
         self.setStyleSheet(STYLE_CARD)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(4)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(12, 10, 12, 10)
+        row.setSpacing(10)
+        glyph, color = ICONS[key]
+        row.addWidget(_icon_badge(glyph, color), alignment=Qt.AlignmentFlag.AlignVCenter)
 
-        lbl_row = QLabel(f"{icon}  {label}")
-        lbl_row.setStyleSheet("font-size: 11px; color: #5f5e5a;")
-        layout.addWidget(lbl_row)
-
+        col = QVBoxLayout()
+        col.setSpacing(0)
         self._value_lbl = QLabel(value)
-        self._value_lbl.setStyleSheet("font-size: 20px; font-weight: 500; color: #e8e6e3;")
-        layout.addWidget(self._value_lbl)
+        self._value_lbl.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {theme.TEXT};")
+        col.addWidget(self._value_lbl)
+        lbl = QLabel(label)
+        lbl.setStyleSheet(f"font-size: 11px; color: {theme.MUTED};")
+        col.addWidget(lbl)
+        row.addLayout(col, stretch=1)
 
     def set_value(self, value: str):
         self._value_lbl.setText(value)
+
+
+class HeroCard(QFrame):
+    """Métrica destacada: el tiempo ahorrado frente a escribir a mano."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("card")
+        self.setStyleSheet(STYLE_HERO)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(18, 14, 18, 16)
+        lay.setSpacing(2)
+        title = QLabel(t("stat_saved").upper())
+        title.setStyleSheet(f"font-size: 10px; font-weight: 700; letter-spacing: 1px; color: {theme.ACCENT_HI};")
+        lay.addWidget(title)
+        self.value = QLabel("0 s")
+        self.value.setStyleSheet(f"font-size: 34px; font-weight: 700; color: {theme.TEXT};")
+        lay.addWidget(self.value)
+        self.sub = QLabel()
+        self.sub.setWordWrap(True)
+        self.sub.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_2};")
+        lay.addWidget(self.sub)
 
 
 class StatsTab(QWidget):
@@ -65,40 +111,38 @@ class StatsTab(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(10)
+
+        self._hero = HeroCard()
+        layout.addWidget(self._hero)
 
         grid = QGridLayout()
         grid.setSpacing(8)
-
         specs = [
-            ("words_total",    "✦", t("stat_words"), "0"),
-            ("wpm",            "⚡", t("stat_wpm"),   f"0 {t('stat_wpm_unit')}"),
-            ("time_recorded",  "◷", t("stat_time"),    "0 s"),
-            ("time_saved",     "◈", t("stat_saved"),   "0 s"),
-            ("sessions_total", "◎", t("stat_sessions"),      "0"),
-            ("ai_corrections", "✧", t("stat_ai"),   "0"),
+            ("words_total",    t("stat_words"),    "0"),
+            ("wpm",            t("stat_wpm"),      f"0 {t('stat_wpm_unit')}"),
+            ("time_recorded",  t("stat_time"),     "0 s"),
+            ("sessions_total", t("stat_sessions"), "0"),
         ]
-
-        for i, (key, icon, label, default) in enumerate(specs):
-            card = StatCard(icon, label, default)
+        for i, (key, label, default) in enumerate(specs):
+            card = StatCard(key, label, default)
             self._cards[key] = card
             grid.addWidget(card, i // 2, i % 2)
-
+        card = StatCard("ai_corrections", t("stat_ai"), "0")
+        self._cards["ai_corrections"] = card
+        grid.addWidget(card, 2, 0, 1, 2)
         layout.addLayout(grid)
+        layout.addSpacing(4)
 
         # última transcripción
-        sep = QFrame()
-        sep.setStyleSheet("background: #2c2c2a; max-height: 1px;")
-        layout.addWidget(sep)
-
-        last_lbl = QLabel(t("stat_last"))
-        last_lbl.setStyleSheet("font-size: 11px; color: #5f5e5a; letter-spacing: 0.05em;")
+        last_lbl = QLabel(t("stat_last").upper())
+        last_lbl.setStyleSheet(f"font-size: 10px; font-weight: 600; color: {theme.FAINT}; letter-spacing: 1px;")
         layout.addWidget(last_lbl)
 
         self._last_text = QLabel("—")
         self._last_text.setWordWrap(True)
-        self._last_text.setStyleSheet("font-size: 13px; color: #888780; line-height: 1.5;")
+        self._last_text.setStyleSheet(f"font-size: 13px; color: {theme.TEXT_2};")
         layout.addWidget(self._last_text)
 
         layout.addStretch()
@@ -131,7 +175,8 @@ class StatsTab(QWidget):
         self._cards["words_total"].set_value(words_str)
         self._cards["wpm"].set_value(f"{wpm} {t('stat_wpm_unit')}")
         self._cards["time_recorded"].set_value(time_str)
-        self._cards["time_saved"].set_value(saved_str)
+        self._hero.value.setText(saved_str)
+        self._hero.sub.setText(t("stat_saved_sub").format(words=words_str))
         self._cards["sessions_total"].set_value(str(sessions))
         self._cards["ai_corrections"].set_value(str(ai_corr))
 

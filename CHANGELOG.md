@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### UI redesign
+- New colour system (`gui/theme.py`): layered neutral surfaces, a single
+  accent colour, and red/amber/green only for states. No colour is
+  hard-coded outside the theme any more
+- Background picker in Settings with four tinted neutral families: Ink
+  (default, deep blue), Midnight (violet), Charcoal (warm) and Graphite
+  (neutral). Tinted neutrals give the dark UI depth instead of flat black
+- Accent colour picker in Settings (Indigo, Blue, Teal, Rose, Mono).
+  Text on the accent is adjusted to meet WCAG AA contrast, checked by a test
+- Changing the accent or the interface language offers to restart Dictum
+  instead of asking you to restart it by hand
+- Native dark title bar instead of the fake one, which doubled the
+  Windows title bar. Closing the window keeps Dictum running in the tray
+- Big animated microphone button on the Transcription tab: pulses with your
+  voice while recording, spins while processing, shows a check when done.
+  Click it to start or stop a dictation
+- Contextual instruction under the button ("Hold Alt and speak", "Release
+  Alt to finish"…); errors and AI warnings in their own banner; the result
+  can be edited before copying
+- Pill-style tab navigation, toggle switches in Settings, aligned settings
+  labels, a save bar that is always visible, compact icon buttons
+- Statistics: highlighted "time saved" card and coloured metric cards
+- History: friendly timestamps ("Today 10:02") and compact cards
+- Drawn app and tray icon
+- Settings fit the minimum window width (combos used to push content off-screen)
+
+### Also
+- A second launch brings the running window forward instead of starting
+  another instance (which registered the hotkey twice)
+- Auto-paste is skipped when Dictum itself is the active window
+- Background settings threads are awaited on quit
+
 ### Added
 - Floating overlay during dictation showing recording / processing / done / error,
   with a live level meter and timer. Always on top, never steals focus, hides

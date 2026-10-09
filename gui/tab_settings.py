@@ -5,115 +5,117 @@ Ajustes: proveedor LLM, modelo, Whisper, hotkey, API keys.
 import httpx
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QLineEdit, QTextEdit, QPushButton, QFrame, QScrollArea, QSizePolicy, QCheckBox
+    QLineEdit, QTextEdit, QPushButton, QFrame, QScrollArea, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QThread, QTimer, QThreadPool, pyqtSignal, pyqtSlot, QObject, QEvent
 import config
-from core.i18n import t
+from core.i18n import t, current_language as t_lang_loaded
+from gui.widgets import ToggleSwitch, AccentPicker
+from gui import theme
 
-STYLE_SECTION = """
-    QFrame#card {
-        background: #111116;
-        border: 1px solid #2c2c2a;
+STYLE_SECTION = f"""
+    QFrame#card {{
+        background: {theme.SURFACE};
+        border: 1px solid {theme.BORDER};
         border-radius: 8px;
-    }
+    }}
 """
-STYLE_INPUT = """
-    QLineEdit {
-        background: #0d0d12;
-        border: 1px solid #2c2c2a;
+STYLE_INPUT = f"""
+    QLineEdit {{
+        background: {theme.INPUT};
+        border: 1px solid {theme.BORDER};
         border-radius: 6px;
         padding: 6px 10px;
         font-size: 13px;
-        color: #e8e6e3;
-    }
-    QLineEdit:focus { border-color: #534AB7; }
+        color: {theme.TEXT};
+    }}
+    QLineEdit:focus {{ border-color: {theme.ACCENT}; }}
 """
-STYLE_COMBO = """
-    QComboBox {
-        background: #0d0d12;
-        border: 1px solid #2c2c2a;
+STYLE_COMBO = f"""
+    QComboBox {{
+        background: {theme.INPUT};
+        border: 1px solid {theme.BORDER};
         border-radius: 6px;
         padding: 6px 10px;
         font-size: 13px;
-        color: #e8e6e3;
-    }
-    QComboBox::drop-down { border: none; width: 24px; }
-    QComboBox QAbstractItemView {
-        background: #111116;
-        border: 1px solid #444441;
-        color: #e8e6e3;
-        selection-background-color: #534AB7;
-    }
+        color: {theme.TEXT};
+    }}
+    QComboBox::drop-down {{ border: none; width: 24px; }}
+    QComboBox QAbstractItemView {{
+        background: {theme.SURFACE};
+        border: 1px solid {theme.BORDER_HI};
+        color: {theme.TEXT};
+        selection-background-color: {theme.ACCENT};
+    }}
 """
-STYLE_BTN = """
-    QPushButton {
+STYLE_BTN = f"""
+    QPushButton {{
         background: transparent;
-        border: 1px solid #444441;
+        border: 1px solid {theme.BORDER_HI};
         border-radius: 6px;
         padding: 5px 14px;
         font-size: 12px;
-        color: #888780;
-    }
-    QPushButton:hover { background: #2c2c2a; color: #e8e6e3; }
+        color: {theme.MUTED};
+    }}
+    QPushButton:hover {{ background: {theme.BORDER}; color: {theme.TEXT}; }}
 """
-STYLE_BTN_PRIMARY = """
-    QPushButton {
-        background: #534AB7;
+STYLE_BTN_PRIMARY = f"""
+    QPushButton {{
+        background: {theme.ACCENT_SOLID};
         border: none;
         border-radius: 6px;
         padding: 6px 18px;
         font-size: 13px;
-        color: #e8e6e3;
-        font-weight: 500;
-    }
-    QPushButton:hover { background: #6358c8; }
+        color: {theme.ON_ACCENT};
+        font-weight: 600;
+    }}
+    QPushButton:hover {{ background: {theme.ACCENT_SOLID_HI}; }}
 """
-STYLE_CODE = """
-    QLabel {
-        background: #0d0d12;
-        border: 1px solid #2c2c2a;
+STYLE_CODE = f"""
+    QLabel {{
+        background: {theme.INPUT};
+        border: 1px solid {theme.BORDER};
         border-radius: 6px;
         padding: 8px 12px;
         font-family: 'Consolas', monospace;
         font-size: 12px;
-        color: #9FE1CB;
-    }
+        color: {theme.CODE};
+    }}
 """
-STYLE_KEY_LABEL = """
-    QLabel {
-        background: #0d0d12;
-        border: 1px solid #2c2c2a;
+STYLE_KEY_LABEL = f"""
+    QLabel {{
+        background: {theme.INPUT};
+        border: 1px solid {theme.BORDER};
         border-radius: 6px;
         padding: 6px 14px;
         font-size: 13px;
-        color: #e8e6e3;
-        min-width: 140px;
+        color: {theme.TEXT};
+        min-width: 60px;
         qproperty-alignment: AlignCenter;
-    }
+    }}
 """
-STYLE_KEY_LABEL_ACTIVE = """
-    QLabel {
-        background: #0d0d12;
-        border: 1px solid #534AB7;
+STYLE_KEY_LABEL_ACTIVE = f"""
+    QLabel {{
+        background: {theme.INPUT};
+        border: 1px solid {theme.ACCENT};
         border-radius: 6px;
         padding: 6px 14px;
         font-size: 13px;
-        color: #5f5e5a;
-        min-width: 140px;
+        color: {theme.FAINT};
+        min-width: 60px;
         qproperty-alignment: AlignCenter;
-    }
+    }}
 """
-STYLE_TEXTAREA = """
-    QTextEdit {
-        background: #0d0d12;
-        border: 1px solid #2c2c2a;
+STYLE_TEXTAREA = f"""
+    QTextEdit {{
+        background: {theme.INPUT};
+        border: 1px solid {theme.BORDER};
         border-radius: 6px;
         padding: 6px 10px;
         font-size: 12px;
-        color: #e8e6e3;
-    }
-    QTextEdit:focus { border-color: #534AB7; }
+        color: {theme.TEXT};
+    }}
+    QTextEdit:focus {{ border-color: {theme.ACCENT}; }}
 """
 
 
@@ -125,15 +127,36 @@ def section(title: str) -> tuple[QFrame, QVBoxLayout]:
     layout.setContentsMargins(14, 12, 14, 12)
     layout.setSpacing(10)
     lbl = QLabel(title)
-    lbl.setStyleSheet("font-size: 11px; color: #5f5e5a; letter-spacing: 0.05em;")
+    lbl.setStyleSheet(f"font-size: 11px; color: {theme.FAINT}; letter-spacing: 0.05em;")
     layout.addWidget(lbl)
     return frame, layout
 
 
-def label(text: str) -> QLabel:
+LABEL_COLUMN_W = 108
+
+
+def label(text: str, column: bool = True) -> QLabel:
+    """Etiqueta de un campo. Con column=True tiene ancho fijo, para que los
+    controles de todas las filas empiecen a la misma altura."""
     l = QLabel(text)
-    l.setStyleSheet("font-size: 12px; color: #888780;")
+    l.setStyleSheet(f"font-size: 12px; color: {theme.MUTED};")
+    if column:
+        l.setFixedWidth(LABEL_COLUMN_W)
+        l.setWordWrap(True)
     return l
+
+
+def wrapped(lbl: QLabel) -> QLabel:
+    lbl.setWordWrap(True)
+    return lbl
+
+
+class StatusLabel(QLabel):
+    """Etiqueta de estado que no ocupa espacio mientras está vacía."""
+
+    def setText(self, text: str):
+        super().setText(text)
+        self.setVisible(bool(text))
 
 
 def _key_display_name(name: str) -> str:
@@ -202,7 +225,7 @@ class KeyCaptureWidget(QWidget):
 
         self._btn = QPushButton(t("btn_capture"))
         self._btn.setStyleSheet(STYLE_BTN)
-        self._btn.setFixedWidth(90)
+        self._btn.setMinimumWidth(70)
         self._btn.clicked.connect(self._toggle)
         lay.addWidget(self._btn)
 
@@ -346,14 +369,32 @@ class KeyCaptureWidget(QWidget):
 
 class NoScrollComboBox(QComboBox):
     """Ignora el scroll del mouse a menos que el widget tenga el foco activo."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # sin esto el combo se ensancha hasta su opción más larga y empuja
+        # el contenido fuera de la ventana
+        self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.setMinimumContentsLength(4)
+
     def wheelEvent(self, event):
         event.ignore()
+
+
+def icon_button(glyph: str, tooltip: str, slot) -> QPushButton:
+    """Botón cuadrado con un símbolo; el texto completo va en el tooltip."""
+    b = QPushButton(glyph)
+    b.setToolTip(tooltip)
+    b.setFixedSize(28, 30)
+    b.setStyleSheet(STYLE_BTN + "QPushButton { padding: 0; font-size: 14px; }")
+    b.setCursor(Qt.CursorShape.PointingHandCursor)
+    b.clicked.connect(slot)
+    return b
 
 
 def section_desc(text: str) -> QLabel:
     l = QLabel(text)
     l.setWordWrap(True)
-    l.setStyleSheet("font-size: 11px; color: #5f5e5a; margin-bottom: 2px;")
+    l.setStyleSheet(f"font-size: 11px; color: {theme.FAINT}; margin-bottom: 2px;")
     return l
 
 
@@ -364,11 +405,11 @@ class CudaChecker(QObject):
         try:
             import ctranslate2
             if ctranslate2.get_cuda_device_count() > 0:
-                self.result.emit(t("cuda_ok"), "#639922")
+                self.result.emit(t("cuda_ok"), theme.GREEN)
             else:
-                self.result.emit(t("cuda_cpu"), "#EF9F27")
+                self.result.emit(t("cuda_cpu"), theme.AMBER)
         except Exception as e:
-            self.result.emit(f"{t('cuda_error')}: {e}", "#E24B4A")
+            self.result.emit(f"{t('cuda_error')}: {e}", theme.RED)
 
 
 class OllamaFetcher(QObject):
@@ -392,6 +433,7 @@ class OllamaFetcher(QObject):
 
 class SettingsTab(QWidget):
     saved = pyqtSignal()
+    restart_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -408,7 +450,7 @@ class SettingsTab(QWidget):
 
         inner = QWidget()
         layout = QVBoxLayout(inner)
-        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(12)
 
         # ── Perfil de usuario ─────────────────────────────────────────────
@@ -432,18 +474,20 @@ class SettingsTab(QWidget):
         gen_row.addWidget(self._gen_btn)
         play.addLayout(gen_row)
 
-        self._gen_status = QLabel("")
-        self._gen_status.setStyleSheet("font-size: 11px; color: #888780;")
+        self._gen_status = StatusLabel("")
+        self._gen_status.setVisible(False)
+        self._gen_status.setStyleSheet(f"font-size: 11px; color: {theme.MUTED};")
         play.addWidget(self._gen_status)
 
         self._gen_lang_note = QLabel(t("profile_lang_note"))
-        self._gen_lang_note.setStyleSheet("font-size: 11px; color: #EF9F27;")
+        self._gen_lang_note.setWordWrap(True)
+        self._gen_lang_note.setStyleSheet(f"font-size: 11px; color: {theme.MUTED};")
         play.addWidget(self._gen_lang_note)
 
         # separador visual
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("color: #2c2c2a;")
+        sep.setStyleSheet(f"color: {theme.BORDER};")
         play.addWidget(sep)
 
         # --- bloque: edición manual ---
@@ -456,14 +500,10 @@ class SettingsTab(QWidget):
         self._setting_profile_combo.currentIndexChanged.connect(self._on_settings_profile_changed)
         row_prof_sel.addWidget(self._setting_profile_combo)
 
-        self._btn_new_prof = QPushButton(t("btn_new_profile"))
-        self._btn_new_prof.setStyleSheet(STYLE_BTN)
-        self._btn_new_prof.clicked.connect(self._add_profile)
+        self._btn_new_prof = icon_button("+", t("btn_new_profile").lstrip("+ "), self._add_profile)
         row_prof_sel.addWidget(self._btn_new_prof)
 
-        self._btn_del_prof = QPushButton(t("btn_delete"))
-        self._btn_del_prof.setStyleSheet(STYLE_BTN)
-        self._btn_del_prof.clicked.connect(self._delete_profile)
+        self._btn_del_prof = icon_button("✕", t("btn_delete"), self._delete_profile)
         row_prof_sel.addWidget(self._btn_del_prof)
         play.addLayout(row_prof_sel)
 
@@ -475,7 +515,7 @@ class SettingsTab(QWidget):
         row_role.addWidget(self._profile_role)
         play.addLayout(row_role)
 
-        play.addWidget(label(t("profile_terms")))
+        play.addWidget(label(t("profile_terms"), column=False))
         self._profile_terms = QTextEdit()
         self._profile_terms.setFixedHeight(68)
         self._profile_terms.setStyleSheet(STYLE_TEXTAREA)
@@ -524,18 +564,17 @@ class SettingsTab(QWidget):
         self._ollama_model_combo.setStyleSheet(STYLE_COMBO)
         self._ollama_model_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         row3.addWidget(self._ollama_model_combo)
-        self._ollama_refresh_btn = QPushButton(f"↻ {t('refresh_models')}")
-        self._ollama_refresh_btn.setStyleSheet(STYLE_BTN)
-        self._ollama_refresh_btn.clicked.connect(self._fetch_ollama_models)
+        self._ollama_refresh_btn = icon_button("↻", t("refresh_models"), self._fetch_ollama_models)
         row3.addWidget(self._ollama_refresh_btn)
         olay.addLayout(row3)
 
         self._ollama_status = QLabel("")
-        self._ollama_status.setStyleSheet("font-size: 11px; color: #888780;")
+        self._ollama_status.setWordWrap(True)
+        self._ollama_status.setStyleSheet(f"font-size: 11px; color: {theme.MUTED};")
         olay.addWidget(self._ollama_status)
 
         # instalar modelo
-        olay.addWidget(label(t("ollama_install")))
+        olay.addWidget(wrapped(label(t("ollama_install"), column=False)))
         self._ollama_install_combo = NoScrollComboBox()
         self._ollama_install_combo.setStyleSheet(STYLE_COMBO)
         self._ollama_install_combo.addItems([
@@ -578,14 +617,10 @@ class SettingsTab(QWidget):
             self._or_model_combo.addItem(custom_m, userData=custom_m)
         row_model.addWidget(self._or_model_combo)
         
-        self._btn_add_or = QPushButton(f"+ {t('btn_new')}")
-        self._btn_add_or.setStyleSheet(STYLE_BTN)
-        self._btn_add_or.clicked.connect(self._add_or_model)
+        self._btn_add_or = icon_button("+", t("btn_new"), self._add_or_model)
         row_model.addWidget(self._btn_add_or)
         
-        self._btn_del_or = QPushButton(f"✕ {t('btn_remove')}")
-        self._btn_del_or.setStyleSheet(STYLE_BTN)
-        self._btn_del_or.clicked.connect(self._del_or_model)
+        self._btn_del_or = icon_button("✕", t("btn_remove"), self._del_or_model)
         row_model.addWidget(self._btn_del_or)
         orlay.addLayout(row_model)
 
@@ -623,7 +658,8 @@ class SettingsTab(QWidget):
         wlay.addLayout(row_dev)
 
         self._cuda_status = QLabel(t("cuda_checking"))
-        self._cuda_status.setStyleSheet("font-size: 11px; color: #888780;")
+        self._cuda_status.setWordWrap(True)
+        self._cuda_status.setStyleSheet(f"font-size: 11px; color: {theme.MUTED};")
         wlay.addWidget(self._cuda_status)
         self._check_cuda()
 
@@ -665,6 +701,22 @@ class SettingsTab(QWidget):
         row_ui_lang.addWidget(self._ui_lang_combo)
         mlay.addLayout(row_ui_lang)
 
+        row_acc = QHBoxLayout()
+        row_acc.addWidget(label(t("accent_color")))
+        self._accent_picker = AccentPicker(
+            theme.ACCENTS, {k: t(f"accent_{k}") for k in theme.ACCENTS})
+        row_acc.addWidget(self._accent_picker)
+        row_acc.addStretch()
+        mlay.addLayout(row_acc)
+
+        row_base = QHBoxLayout()
+        row_base.addWidget(label(t("base_color")))
+        self._base_picker = AccentPicker(
+            theme.BASE_SWATCHES, {k: t(f"base_{k}") for k in theme.BASES})
+        row_base.addWidget(self._base_picker)
+        row_base.addStretch()
+        mlay.addLayout(row_base)
+
         row_lang = QHBoxLayout()
         row_lang.addWidget(label(t("dictation_lang")))
         self._lang_combo = NoScrollComboBox()
@@ -687,41 +739,44 @@ class SettingsTab(QWidget):
         row_hkm.addWidget(self._hotkey_mode)
         mlay.addLayout(row_hkm)
 
-        self._auto_paste_cb = QCheckBox(f" {t('auto_paste')}")
-        self._auto_paste_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
+        self._auto_paste_cb = ToggleSwitch(t("auto_paste"))
         mlay.addWidget(self._auto_paste_cb)
 
-        self._play_sounds_cb = QCheckBox(f" {t('play_sounds')}")
-        self._play_sounds_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
+        self._play_sounds_cb = ToggleSwitch(t("play_sounds"))
         mlay.addWidget(self._play_sounds_cb)
 
-        self._show_overlay_cb = QCheckBox(f" {t('show_overlay')}")
-        self._show_overlay_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
+        self._show_overlay_cb = ToggleSwitch(t("show_overlay"))
         mlay.addWidget(self._show_overlay_cb)
 
-        self._esc_cancels_cb = QCheckBox(f" {t('esc_cancels')}")
-        self._esc_cancels_cb.setStyleSheet("color: #e8e6e3; font-size: 13px;")
+        self._esc_cancels_cb = ToggleSwitch(t("esc_cancels"))
         mlay.addWidget(self._esc_cancels_cb)
 
         layout.addWidget(frm_misc)
 
-        # ── Guardar ────────────────────────────────────────────────────────
-        save_btn = QPushButton(t("btn_save_settings"))
-        save_btn.setStyleSheet(STYLE_BTN_PRIMARY)
-        save_btn.clicked.connect(self._save)
-        layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
-
-        self._save_status = QLabel("")
-        self._save_status.setStyleSheet("font-size: 12px; color: #639922;")
-        self._save_status.setAlignment(Qt.AlignmentFlag.AlignRight)
-        layout.addWidget(self._save_status)
-
         layout.addStretch()
         scroll.setWidget(inner)
 
+        # ── Guardar: barra fija bajo el scroll, siempre visible ────────────
+        footer = QWidget()
+        footer.setObjectName("footer")
+        footer.setStyleSheet(f"QWidget#footer {{ background: {theme.SURFACE}; border-top: 1px solid {theme.BORDER}; }}")
+        frow = QHBoxLayout(footer)
+        frow.setContentsMargins(16, 10, 16, 10)
+        self._save_status = QLabel("")
+        self._save_status.setStyleSheet(f"font-size: 12px; color: {theme.GREEN_HI}; background: transparent;")
+        frow.addWidget(self._save_status)
+        frow.addStretch()
+        save_btn = QPushButton(t("btn_save_settings"))
+        save_btn.setStyleSheet(STYLE_BTN_PRIMARY)
+        save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        save_btn.clicked.connect(self._save)
+        frow.addWidget(save_btn)
+
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
         outer.addWidget(scroll)
+        outer.addWidget(footer)
 
     # ── carga ──────────────────────────────────────────────────────────────
 
@@ -786,6 +841,8 @@ class SettingsTab(QWidget):
         ui_lang = c.get("ui_language", "en")
         ui_lang_map = {"en": 0, "es": 1}
         self._ui_lang_combo.setCurrentIndex(ui_lang_map.get(ui_lang, 0))
+        self._accent_picker.set_value(c.get("accent", theme.DEFAULT_ACCENT))
+        self._base_picker.set_value(c.get("base", theme.DEFAULT_BASE))
 
         self._auto_paste_cb.setChecked(c.get("auto_paste", False))
         self._play_sounds_cb.setChecked(c.get("play_sounds", True))
@@ -811,6 +868,13 @@ class SettingsTab(QWidget):
         thread.finished.connect(thread.deleteLater)
         thread.start()
         return thread
+
+    def shutdown(self, timeout_ms: int = 1500):
+        """Espera a los hilos en segundo plano antes de salir: destruir un
+        QThread que sigue corriendo aborta el proceso."""
+        for thread in self.findChildren(QThread):
+            thread.quit()
+            thread.wait(timeout_ms)
 
     def _check_cuda(self):
         checker = CudaChecker()
@@ -849,16 +913,16 @@ class SettingsTab(QWidget):
             if idx >= 0:
                 self._ollama_model_combo.setCurrentIndex(idx)
             self._ollama_status.setText(t("ollama_models_found").format(n=len(models)))
-            self._ollama_status.setStyleSheet("font-size: 11px; color: #639922;")
+            self._ollama_status.setStyleSheet(f"font-size: 11px; color: {theme.GREEN};")
         else:
             self._ollama_status.setText(t("ollama_no_models"))
-            self._ollama_status.setStyleSheet("font-size: 11px; color: #EF9F27;")
+            self._ollama_status.setStyleSheet(f"font-size: 11px; color: {theme.AMBER};")
 
     def _on_ollama_error(self, err: str):
         if self.sender() is not self._fetcher:
             return
         self._ollama_status.setText(t("ollama_not_found"))
-        self._ollama_status.setStyleSheet("font-size: 11px; color: #E24B4A;")
+        self._ollama_status.setStyleSheet(f"font-size: 11px; color: {theme.RED};")
 
     def _save(self):
         cfg = config.load()
@@ -903,6 +967,12 @@ class SettingsTab(QWidget):
 
         ui_lang_map = {0: "en", 1: "es"}
         cfg["ui_language"] = ui_lang_map.get(self._ui_lang_combo.currentIndex(), "en")
+        cfg["accent"] = self._accent_picker.value()
+        cfg["base"] = self._base_picker.value()
+        # idioma y color se aplican al construir la interfaz: hace falta reiniciar
+        needs_restart = (cfg["ui_language"] != t_lang_loaded()
+                         or cfg["accent"] != theme.ACCENT_KEY
+                         or cfg["base"] != theme.BASE_KEY)
 
         cfg["auto_paste"] = self._auto_paste_cb.isChecked()
         cfg["play_sounds"] = self._play_sounds_cb.isChecked()
@@ -913,6 +983,8 @@ class SettingsTab(QWidget):
         self._cfg = cfg
         self._save_status.setText(f"✓ {t('saved')}")
         self.saved.emit()
+        if needs_restart:
+            self.restart_requested.emit()
         QTimer.singleShot(2000, lambda: self._save_status.setText(""))
 
     def _on_settings_profile_changed(self, idx: int):
@@ -984,7 +1056,7 @@ class SettingsTab(QWidget):
         desc = self._gen_input.text().strip()
         if not desc:
             self._gen_status.setText(t("profile_gen_empty"))
-            self._gen_status.setStyleSheet("font-size: 11px; color: #EF9F27;")
+            self._gen_status.setStyleSheet(f"font-size: 11px; color: {theme.AMBER};")
             return
         self._gen_btn.setEnabled(False)
         self._gen_btn.setText(t("generating"))
@@ -1004,11 +1076,11 @@ class SettingsTab(QWidget):
         self._gen_btn.setEnabled(True)
         self._gen_btn.setText(f"✨ {t('btn_generate_profile')}")
         self._gen_status.setText(f"✓ {t('profile_generated')}")
-        self._gen_status.setStyleSheet("font-size: 11px; color: #639922;")
+        self._gen_status.setStyleSheet(f"font-size: 11px; color: {theme.GREEN};")
         QTimer.singleShot(4000, lambda: self._gen_status.setText(""))
 
     def _on_profile_error(self, msg: str):
         self._gen_btn.setEnabled(True)
         self._gen_btn.setText(f"✨ {t('btn_generate_profile')}")
         self._gen_status.setText(f"Error: {msg}")
-        self._gen_status.setStyleSheet("font-size: 11px; color: #E24B4A;")
+        self._gen_status.setStyleSheet(f"font-size: 11px; color: {theme.RED};")

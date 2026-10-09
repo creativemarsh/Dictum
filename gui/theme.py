@@ -1,0 +1,347 @@
+"""
+theme.py
+Paleta, hoja de estilos global e iconos dibujados de Dictum.
+"""
+import sys
+
+from PyQt6.QtCore import Qt, QRectF, QPointF
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPixmap, QPen
+
+# ── sistema de color ─────────────────────────────────────────────────────────
+# Principios:
+#  - La interfaz es casi toda neutra; el color se reserva para lo que importa.
+#  - Un único color de acento (elegible) para la marca: botón del micrófono,
+#    botón principal, interruptores y foco.
+#  - Rojo / ámbar / verde solo para estados (grabando, aviso, hecho), con
+#    luminosidad parecida para que ninguno "grite" más que otro.
+#  - Las superficies suben de claridad con la elevación (fondo → tarjeta →
+#    elevado), así hacen falta menos bordes.
+
+
+def mix(a: str, b: str, t: float) -> str:
+    """Mezcla dos colores hex: t=0 → a, t=1 → b."""
+    ca, cb = QColor(a), QColor(b)
+    return QColor(
+        round(ca.red() + (cb.red() - ca.red()) * t),
+        round(ca.green() + (cb.green() - ca.green()) * t),
+        round(ca.blue() + (cb.blue() - ca.blue()) * t),
+    ).name()
+
+
+# Bases: familias de neutros. Cada una mantiene los mismos saltos de
+# claridad entre niveles; solo cambia el matiz (y un poco la saturación).
+_BASE_KEYS = ("BG", "SURFACE", "SURFACE_2", "INPUT", "BORDER", "BORDER_HI",
+              "TEXT", "TEXT_2", "MUTED", "FAINT")
+BASES = {
+    # gris neutro casi negro
+    "graphite": ("#0b0c0e", "#131417", "#1b1c20", "#0f1012", "#222327", "#2f3036",
+                 "#ededef", "#b0b1b8", "#83848c", "#6d6e75"),
+    # azul tinta: frío, sereno, "herramienta de trabajo"
+    "ink":      ("#0e121a", "#151b26", "#1d2433", "#11161f", "#252d3c", "#323b4d",
+                 "#e8ecf3", "#a9b3c4", "#7f8a9e", "#6a7488"),
+    # violeta noche: acompaña al índigo, más personalidad
+    "midnight": ("#100f19", "#181726", "#201e33", "#13121d", "#29263b", "#363250",
+                 "#edebf5", "#b2aec8", "#86829d", "#706c88"),
+    # carbón cálido: oscuro "de papel", contrasta con acentos fríos
+    "charcoal": ("#131211", "#1b1a18", "#242220", "#161514", "#2c2a27", "#3a3733",
+                 "#efede9", "#bab6ae", "#8e8a82", "#77736c"),
+}
+DEFAULT_BASE = "ink"
+
+# color representativo de cada base para el selector de Ajustes (los fondos
+# reales son tan oscuros que no se distinguirían en una muestra pequeña)
+BASE_SWATCHES = {
+    "graphite": "#45464d",
+    "ink":      "#2f4366",
+    "midnight": "#43386e",
+    "charcoal": "#59524a",
+}
+
+
+def _load_key(name: str, options: dict, default: str) -> str:
+    try:
+        import config
+        key = config.load().get(name, default)
+    except Exception:
+        key = default
+    return key if key in options else default
+
+
+BASE_KEY = _load_key("base", BASES, DEFAULT_BASE)   # se fija al arrancar
+(BG, SURFACE, SURFACE_2, INPUT, BORDER, BORDER_HI,
+ TEXT, TEXT_2, MUTED, FAINT) = BASES[BASE_KEY]
+WHITE = "#ffffff"
+
+# colores de estado
+RED   = "#ef6461"
+AMBER = "#e8a33d"
+GREEN = "#3fb67f"
+
+# acentos curados: (nombre i18n, color). Todos con contraste suficiente
+# para texto blanco encima y legibles sobre el fondo oscuro.
+ACCENTS = {
+    "indigo": "#6b6ff0",
+    "blue":   "#3b82f6",
+    "teal":   "#14a39a",
+    "rose":   "#e0577f",
+    "mono":   "#e6e6ea",
+}
+DEFAULT_ACCENT = "indigo"
+
+
+def _luma(hex_color: str) -> float:
+    c = QColor(hex_color)
+    return 0.2126 * c.redF() + 0.7152 * c.greenF() + 0.0722 * c.blueF()
+
+
+def contrast(a: str, b: str) -> float:
+    """Relación de contraste WCAG 2 entre dos colores (1–21)."""
+    def rel(hex_color: str) -> float:
+        c = QColor(hex_color)
+        lin = [v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+               for v in (c.redF(), c.greenF(), c.blueF())]
+        return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    hi, lo = sorted((rel(a), rel(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def solid_for_text(color: str, text: str, target: float = 4.6) -> str:
+    """Oscurece (o aclara) color lo justo para que text encima cumpla WCAG AA."""
+    toward = "#000000" if QColor(text).lightness() > 128 else WHITE
+    t = 0.0
+    out = color
+    while contrast(out, text) < target and t < 1.0:
+        t += 0.01
+        out = mix(color, toward, t)
+    return out
+
+
+def on_color(bg: str) -> str:
+    """Color de texto/icono legible sobre bg."""
+    return "#111114" if _luma(bg) > 0.6 else WHITE
+
+
+ACCENT_KEY = _load_key("accent", ACCENTS, DEFAULT_ACCENT)   # se fija al arrancar
+ACCENT    = ACCENTS[ACCENT_KEY]
+ACCENT_HI = mix(ACCENT, WHITE, 0.15)              # hover
+ON_ACCENT = on_color(ACCENT)                      # texto sobre el acento
+# fondo sólido para botones con texto: el acento ajustado a contraste AA
+ACCENT_SOLID    = solid_for_text(ACCENT, ON_ACCENT)
+ACCENT_SOLID_HI = mix(ACCENT_SOLID, WHITE if ON_ACCENT == WHITE else "#000000", 0.08)
+ACCENT_BG = mix(SURFACE, ACCENT, 0.12)            # tintes suaves
+ACCENT_BORDER = mix(SURFACE, ACCENT, 0.35)
+
+# variantes derivadas de los colores de estado
+RED_HI      = mix(RED, WHITE, 0.2)
+RED_TEXT    = mix(RED, WHITE, 0.3)
+RED_BG      = mix(BG, RED, 0.10)
+RED_BG_HI   = mix(BG, RED, 0.18)
+RED_BORDER  = mix(BG, RED, 0.35)
+AMBER_TEXT  = mix(AMBER, WHITE, 0.3)
+AMBER_BG    = mix(BG, AMBER, 0.10)
+AMBER_BORDER = mix(BG, AMBER, 0.35)
+GREEN_HI    = mix(GREEN, WHITE, 0.3)
+GREEN_BG    = mix(BG, GREEN, 0.12)
+HERO_BG     = ACCENT_BG
+HERO_BORDER = ACCENT_BORDER
+CODE        = TEXT_2
+
+# compatibilidad con nombres anteriores
+ORANGE = AMBER
+
+STATE_COLORS = {
+    "idle":       ACCENT,
+    "recording":  RED,
+    "processing": ORANGE,
+}
+
+STYLE = f"""
+QMainWindow, QWidget {{
+    background: {BG};
+    color: {TEXT};
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 13px;
+}}
+QTabWidget::pane {{
+    border: none;
+    border-top: 1px solid {BORDER};
+    background: {BG};
+}}
+QTabWidget::tab-bar {{
+    left: 12px;
+}}
+QTabBar {{
+    qproperty-drawBase: 0;
+    background: transparent;
+}}
+QTabBar::tab {{
+    background: transparent;
+    color: {MUTED};
+    padding: 6px 11px;
+    margin: 10px 1px 10px 1px;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+}}
+QTabBar::tab:selected {{
+    background: {SURFACE_2};
+    color: {TEXT};
+}}
+QTabBar::tab:hover:!selected {{
+    color: {TEXT_2};
+}}
+QFrame#card QLabel, QFrame#card QCheckBox {{
+    background: transparent;
+}}
+QCheckBox {{
+    spacing: 8px;
+}}
+QCheckBox::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1px solid {BORDER_HI};
+    border-radius: 4px;
+    background: {INPUT};
+}}
+QCheckBox::indicator:hover {{
+    border-color: {ACCENT};
+}}
+QCheckBox::indicator:checked {{
+    background: {ACCENT};
+    border-color: {ACCENT};
+}}
+QScrollBar:vertical {{
+    background: transparent;
+    width: 8px;
+    margin: 2px;
+}}
+QScrollBar::handle:vertical {{
+    background: {BORDER_HI};
+    border-radius: 2px;
+    min-height: 24px;
+}}
+QScrollBar::handle:vertical:hover {{
+    background: {FAINT};
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
+QScrollBar:horizontal {{ height: 0; }}
+QToolTip {{
+    background: {SURFACE};
+    color: {TEXT};
+    border: 1px solid {BORDER_HI};
+    padding: 4px 8px;
+}}
+QMenu {{
+    background: {SURFACE};
+    color: {TEXT};
+    border: 1px solid {BORDER_HI};
+    padding: 4px;
+}}
+QMenu::item {{
+    padding: 6px 18px;
+    border-radius: 4px;
+}}
+QMenu::item:selected {{
+    background: {SURFACE_2};
+}}
+QMenu::separator {{
+    height: 1px;
+    background: {BORDER};
+    margin: 4px 6px;
+}}
+QComboBox QAbstractItemView {{
+    background: {SURFACE};
+    border: 1px solid {BORDER_HI};
+    color: {TEXT};
+    selection-background-color: {SURFACE_2};
+    selection-color: {TEXT};
+    outline: none;
+}}
+QDialog QPushButton, QMessageBox QPushButton {{
+    background: transparent;
+    border: 1px solid {BORDER_HI};
+    border-radius: 6px;
+    padding: 5px 16px;
+    min-width: 64px;
+    color: {TEXT};
+}}
+QDialog QPushButton:hover, QMessageBox QPushButton:hover {{
+    background: {BORDER};
+}}
+QDialog QPushButton:default, QMessageBox QPushButton:default {{
+    background: {ACCENT_SOLID};
+    border-color: {ACCENT_SOLID};
+    color: {ON_ACCENT};
+}}
+QDialog QLineEdit {{
+    background: {INPUT};
+    border: 1px solid {BORDER};
+    border-radius: 6px;
+    padding: 6px 10px;
+}}
+QDialog QLineEdit:focus {{
+    border-color: {ACCENT};
+}}
+"""
+
+
+def draw_mic(p: QPainter, rect: QRectF, color: QColor) -> None:
+    """Dibuja un micrófono centrado en rect (diseñado sobre una rejilla de 64)."""
+    s = rect.width() / 64.0
+    ox, oy = rect.x(), rect.y()
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(color)
+    p.drawRoundedRect(QRectF(ox + 25 * s, oy + 13 * s, 14 * s, 24 * s), 7 * s, 7 * s)
+    pen = QPen(color, 3.6 * s)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    p.setPen(pen)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    arc_rect = QRectF(ox + 19 * s, oy + 18 * s, 26 * s, 24 * s)
+    arc = QPainterPath()
+    arc.arcMoveTo(arc_rect, 180)
+    arc.arcTo(arc_rect, 180, 180)
+    p.drawPath(arc)
+    p.drawLine(QPointF(ox + 32 * s, oy + 42 * s), QPointF(ox + 32 * s, oy + 49 * s))
+    p.drawLine(QPointF(ox + 25 * s, oy + 50 * s), QPointF(ox + 39 * s, oy + 50 * s))
+    p.restore()
+
+
+def app_icon(state: str = "idle", size: int = 64) -> QIcon:
+    """Icono de Dictum: un micrófono blanco sobre un círculo del color del estado."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size / 64.0
+    p.setPen(Qt.PenStyle.NoPen)
+    color = STATE_COLORS.get(state, ACCENT)
+    p.setBrush(QColor(color))
+    p.drawEllipse(QRectF(2 * s, 2 * s, 60 * s, 60 * s))
+    draw_mic(p, QRectF(0, 0, size, size), QColor(on_color(color)))
+    p.end()
+    return QIcon(pm)
+
+
+def apply_dark_title_bar(widget) -> None:
+    """En Windows 10/11 pide a DWM una barra de título oscura (y del color
+    de la app en Windows 11). En otros sistemas no hace nada."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        hwnd = int(widget.winId())
+        dwm = ctypes.windll.dwmapi
+        on = ctypes.c_int(1)
+        # 20 = DWMWA_USE_IMMERSIVE_DARK_MODE (19 en builds antiguas de Win10)
+        for attr in (20, 19):
+            if dwm.DwmSetWindowAttribute(hwnd, attr, ctypes.byref(on), ctypes.sizeof(on)) == 0:
+                break
+        # 35 = DWMWA_CAPTION_COLOR (solo Windows 11), formato COLORREF 0x00BBGGRR
+        c = QColor(BG)
+        colorref = ctypes.c_int(c.red() | (c.green() << 8) | (c.blue() << 16))
+        dwm.DwmSetWindowAttribute(hwnd, 35, ctypes.byref(colorref), ctypes.sizeof(colorref))
+    except Exception:
+        pass

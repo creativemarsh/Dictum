@@ -50,8 +50,18 @@ class I18n:
     def t(self, key: str, default: str = None) -> str:
         return self._locales.get(key, default or key)
 
+    @property
+    def language(self) -> str:
+        return self._lang
+
+
 # Singleton
 _i18n_instance = I18n()
 
 def t(key: str, default: str = None) -> str:
     return _i18n_instance.t(key, default)
+
+
+def current_language() -> str:
+    """Idioma con el que se construyó la interfaz en esta ejecución."""
+    return _i18n_instance.language

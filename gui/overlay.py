@@ -15,14 +15,15 @@ from PyQt6.QtCore import (
 from PyQt6.QtGui import QPainter, QColor, QFont, QFontMetrics, QCursor, QPainterPath
 
 from core.i18n import t
+from gui import theme
 
-RED    = "#E24B4A"
-ORANGE = "#EF9F27"
-GREEN  = "#639922"
-PURPLE = "#534AB7"
-GREY   = "#888780"
-TEXT   = "#e8e6e3"
-MUTED  = "#5f5e5a"
+RED    = theme.RED
+ORANGE = theme.AMBER
+GREEN  = theme.GREEN
+PURPLE = theme.ACCENT
+GREY   = theme.MUTED
+TEXT   = theme.TEXT
+MUTED  = theme.FAINT
 
 # estado → (clave i18n, color, ms antes de ocultarse; 0 = permanece)
 STATES = {
@@ -195,7 +196,7 @@ class DictationOverlay(QWidget):
         # fondo tipo "píldora"
         path = QPainterPath()
         path.addRoundedRect(r, radius, radius)
-        p.fillPath(path, QColor(17, 17, 22, 240))
+        p.fillPath(path, QColor(23, 24, 29, 245))
         border = QColor(self._color)
         border.setAlpha(150)
         p.setPen(border)
@@ -248,7 +249,7 @@ class DictationOverlay(QWidget):
         # texto secundario (Esc para cancelar / detalle del error)
         if hint_w:
             p.setFont(self._small)
-            p.setPen(QColor(MUTED if self._state != "error" else "#c98b8a"))
+            p.setPen(QColor(MUTED if self._state != "error" else theme.RED_TEXT))
             fm = QFontMetrics(self._small)
             hint = fm.elidedText(self._hint(), Qt.TextElideMode.ElideRight, hint_w)
             p.drawText(QRectF(x, 0, hint_w + 2, r.height()),

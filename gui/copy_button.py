@@ -10,16 +10,17 @@ from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtCore import QTimer
 
 from core.i18n import t
+from gui import theme
 
-STYLE_COPIED = """
-    QPushButton {{
-        background: #1a2410;
-        border: 1px solid #639922;
+STYLE_COPIED = f"""
+    QPushButton {{{{
+        background: {theme.GREEN_BG};
+        border: 1px solid {theme.GREEN};
         border-radius: 6px;
-        padding: {padding};
-        font-size: {font_size};
-        color: #97C459;
-    }}
+        padding: {{padding}};
+        font-size: {{font_size}};
+        color: {theme.GREEN_HI};
+    }}}}
 """
 
 FEEDBACK_MS = 1500

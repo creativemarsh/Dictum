@@ -4,289 +4,302 @@ Tab principal: estado, waveform animado, resultado y botones.
 """
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QFrame, QSizePolicy, QTextEdit,
+    QPushButton, QFrame, QTextEdit, QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QPainter, QColor, QPen
-import random
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QColor
+
+import config
 from core.i18n import t
+from gui import theme
 from gui.copy_button import CopyButton
+from gui.widgets import MicButton
 
 STYLE_BADGE = """
     QLabel {{
-        background: #111116;
-        border: 1px solid #2c2c2a;
-        border-radius: 12px;
-        padding: 4px 12px;
+        background: {bg};
+        border: 1px solid {border};
+        border-radius: 11px;
+        padding: 3px 11px;
+        font-size: 12px;
+        font-weight: 600;
+        color: {color};
+    }}
+"""
+
+STYLE_COMBO = f"""
+    QComboBox {{
+        background: {theme.INPUT};
+        border: 1px solid {theme.BORDER};
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 12px;
+        color: {theme.TEXT};
+        min-width: 110px;
+    }}
+    QComboBox:hover {{ border-color: {theme.BORDER_HI}; }}
+    QComboBox::drop-down {{ border: none; width: 20px; }}
+"""
+
+STYLE_BTN = f"""
+    QPushButton {{
+        background: transparent;
+        border: 1px solid {theme.BORDER_HI};
+        border-radius: 6px;
+        padding: 5px 14px;
+        font-size: 12px;
+        color: {theme.MUTED};
+    }}
+    QPushButton:hover {{ background: {theme.BORDER}; color: {theme.TEXT}; }}
+    QPushButton:pressed {{ background: {theme.BORDER_HI}; }}
+"""
+
+STYLE_BTN_CANCEL = f"""
+    QPushButton {{
+        background: transparent;
+        border: 1px solid {theme.BORDER_HI};
+        border-radius: 6px;
+        padding: 5px 14px;
+        font-size: 12px;
+        color: {theme.TEXT_2};
+    }}
+    QPushButton:hover {{ background: {theme.RED_BG}; border-color: {theme.RED_BORDER}; color: {theme.RED_TEXT}; }}
+    QPushButton:pressed {{ background: {theme.RED_BG_HI}; }}
+"""
+
+STYLE_CARD = f"""
+    QFrame#card {{
+        background: {theme.SURFACE};
+        border: 1px solid {theme.BORDER};
+        border-radius: 10px;
+    }}
+"""
+
+STYLE_BANNER = """
+    QLabel {{
+        background: {bg};
+        border: 1px solid {border};
+        border-radius: 8px;
+        padding: 8px 10px;
         font-size: 12px;
         color: {color};
     }}
 """
 
-STYLE_COMBO = """
-    QComboBox {
-        background: #0d0d12;
-        border: 1px solid #2c2c2a;
-        border-radius: 6px;
-        padding: 4px 8px;
-        font-size: 11px;
-        color: #e8e6e3;
-    }
-    QComboBox::drop-down { border: none; width: 24px; }
-"""
-
-STYLE_BTN = """
-    QPushButton {
+STYLE_OUTPUT = f"""
+    QTextEdit {{
         background: transparent;
-        border: 1px solid #444441;
-        border-radius: 6px;
-        padding: 5px 14px;
-        font-size: 12px;
-        color: #888780;
-    }
-    QPushButton:hover { background: #2c2c2a; color: #e8e6e3; }
-    QPushButton:pressed { background: #444441; }
+        border: none;
+        font-size: 14px;
+        color: {theme.TEXT};
+        selection-background-color: {theme.ACCENT};
+    }}
 """
 
-STYLE_BTN_CANCEL = """
-    QPushButton {
-        background: transparent;
-        border: 1px solid #E24B4A;
-        border-radius: 6px;
-        padding: 5px 14px;
-        font-size: 12px;
-        color: #E24B4A;
-    }
-    QPushButton:hover { background: #2c1a1a; color: #ff6b6a; }
-    QPushButton:pressed { background: #3c2a2a; }
-"""
+# estado → (clave i18n de la etiqueta, color)
+BADGES = {
+    "idle":       ("status_idle",       theme.MUTED),
+    "recording":  ("status_recording",  theme.RED),
+    "processing": ("status_processing", theme.ORANGE),
+    "cancelling": ("status_canceling",  theme.MUTED),
+    "done":       ("status_done",       theme.GREEN_HI),
+    "done_no_ai": ("status_done_no_ai", theme.ORANGE),
+}
 
-STYLE_OUTPUT = """
-    QFrame#card {
-        background: #111116;
-        border: 1px solid #2c2c2a;
-        border-radius: 8px;
-    }
-"""
+# colores de los avisos: (fondo, borde, texto)
+BANNERS = {
+    "warning": (theme.AMBER_BG, theme.AMBER_BORDER, theme.AMBER_TEXT),
+    "error":   (theme.RED_BG, theme.RED_BORDER, theme.RED_TEXT),
+}
 
 
-class WaveformWidget(QWidget):
-    """Waveform animado — barras que suben/bajan según el nivel de audio."""
-
-    BAR_COUNT = 20
-    BAR_W     = 3
-    GAP       = 3
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedHeight(52)
-        self._levels = [0.15] * self.BAR_COUNT
-        self._active = False
-        self._target = 0.0
-
-        self._timer = QTimer()
-        self._timer.setInterval(60)
-        self._timer.timeout.connect(self._animate)
-        self._timer.start()
-
-    def set_active(self, active: bool):
-        self._active = active
-        if not active:
-            self._target = 0.0
-
-    def set_level(self, rms: float):
-        self._target = rms
-
-    def _animate(self):
-        if self._active:
-            for i in range(self.BAR_COUNT):
-                noise  = random.uniform(0.3, 1.0)
-                target = self._target * noise
-                self._levels[i] += (target - self._levels[i]) * 0.4
-        else:
-            for i in range(self.BAR_COUNT):
-                self._levels[i] *= 0.7
-        self.update()
-
-    def paintEvent(self, event):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w = self.width()
-        h = self.height()
-        total_w = self.BAR_COUNT * self.BAR_W + (self.BAR_COUNT - 1) * self.GAP
-        x0 = (w - total_w) // 2
-
-        for i, lvl in enumerate(self._levels):
-            bar_h = max(4, int(lvl * (h - 8)))
-            x = x0 + i * (self.BAR_W + self.GAP)
-            y = (h - bar_h) // 2
-            color = QColor("#E24B4A") if self._active else QColor("#444441")
-            p.setBrush(color)
-            p.setPen(Qt.PenStyle.NoPen)
-            p.drawRoundedRect(x, y, self.BAR_W, bar_h, 2, 2)
+def _tinted(color: str, alpha: int) -> str:
+    c = QColor(color)
+    return f"rgba({c.red()}, {c.green()}, {c.blue()}, {alpha})"
 
 
 class TranscribeTab(QWidget):
     cancel_clicked = pyqtSignal()
-    tray_clicked = pyqtSignal()
+    mic_clicked    = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._state = "idle"
         self._result_text = ""
+        self._pasted = False
         self._setup_ui()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(12)
 
-        # ── estado ────────────────────────────────────────────────────────
+        # ── cabecera: estado + perfil ─────────────────────────────────────
         row = QHBoxLayout()
-        self._badge = QLabel(t("status_waiting"))
-        self._badge.setStyleSheet(STYLE_BADGE.format(color="#888780"))
+        row.setSpacing(8)
+        self._badge = QLabel()
         row.addWidget(self._badge)
         row.addStretch()
-        
+
+        prof_lbl = QLabel(t("lbl_profile"))
+        prof_lbl.setStyleSheet(f"font-size: 11px; color: {theme.FAINT};")
+        row.addWidget(prof_lbl)
         self._profile_combo = QComboBox()
         self._profile_combo.setStyleSheet(STYLE_COMBO)
+        self._profile_combo.setCursor(Qt.CursorShape.PointingHandCursor)
         self._profile_combo.currentIndexChanged.connect(self._on_profile_changed)
         self._load_profiles()
         row.addWidget(self._profile_combo)
-
-        self._hint = QLabel(f"Alt {t('tray_record_hint')}")
-        self._hint.setStyleSheet("font-size: 11px; color: #5f5e5a;")
-        row.addWidget(self._hint)
         layout.addLayout(row)
 
-        # ── waveform ──────────────────────────────────────────────────────
-        self._wave = WaveformWidget()
-        self._wave.setStyleSheet("background: #111116; border: 1px solid #2c2c2a; border-radius: 8px;")
-        layout.addWidget(self._wave)
+        # ── zona de dictado: onda + instrucción ───────────────────────────
+        hero = QFrame()
+        hero.setObjectName("card")
+        hero.setStyleSheet(STYLE_CARD)
+        hlay = QVBoxLayout(hero)
+        hlay.setContentsMargins(16, 4, 16, 12)
+        hlay.setSpacing(2)
 
-        # ── output ────────────────────────────────────────────────────────
-        out_frame = QFrame()
-        out_frame.setObjectName("card")   # el estilo no debe heredarse a los QLabel hijos
-        out_frame.setStyleSheet(STYLE_OUTPUT)
-        out_layout = QVBoxLayout(out_frame)
-        out_layout.setContentsMargins(12, 10, 12, 10)
-        out_layout.setSpacing(6)
+        self._mic = MicButton()
+        self._mic.clicked.connect(self.mic_clicked)
+        hlay.addWidget(self._mic, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        lbl = QLabel(t("lbl_result"))
-        lbl.setStyleSheet("font-size: 11px; color: #5f5e5a; letter-spacing: 0.05em; text-transform: uppercase;")
-        out_layout.addWidget(lbl)
+        self._hint = QLabel()
+        self._hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._hint.setWordWrap(True)
+        self._hint.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {theme.TEXT};")
+        hlay.addWidget(self._hint)
 
-        self._output = QTextEdit()
-        self._output.setReadOnly(True)
-        self._output.setPlaceholderText(t("placeholder_result"))
-        self._output.setMinimumHeight(100)
-        self._output.setStyleSheet(self._output_style("#5f5e5a", italic=True))
-        out_layout.addWidget(self._output)
-
-        layout.addWidget(out_frame)
-
-        # ── botones ───────────────────────────────────────────────────────
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
+        self._subhint = QLabel()
+        self._subhint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._subhint.setStyleSheet(f"font-size: 11px; color: {theme.FAINT};")
+        hlay.addWidget(self._subhint)
 
         self._btn_cancel = QPushButton(t("btn_cancel"))
         self._btn_cancel.setStyleSheet(STYLE_BTN_CANCEL)
+        self._btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_cancel.clicked.connect(self.cancel_clicked)
         self._btn_cancel.setVisible(False)
-        btn_row.addWidget(self._btn_cancel)
+        # reservar su hueco aunque esté oculto, para que la tarjeta no salte
+        sp = self._btn_cancel.sizePolicy()
+        sp.setRetainSizeWhenHidden(True)
+        self._btn_cancel.setSizePolicy(sp)
+        hlay.addSpacing(6)
+        hlay.addWidget(self._btn_cancel, alignment=Qt.AlignmentFlag.AlignCenter)
+        # altura fija: si falta espacio cede la tarjeta del resultado, no esta
+        hero.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        layout.addWidget(hero)
 
-        self._btn_copy = CopyButton(lambda: self._result_text, STYLE_BTN)
+        # ── aviso / error (separado del texto) ────────────────────────────
+        self._banner = QLabel()
+        self._banner.setWordWrap(True)
+        self._banner.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._banner.setVisible(False)
+        layout.addWidget(self._banner)
+
+        # ── resultado ─────────────────────────────────────────────────────
+        out_frame = QFrame()
+        out_frame.setObjectName("card")
+        out_frame.setStyleSheet(STYLE_CARD)
+        out_layout = QVBoxLayout(out_frame)
+        out_layout.setContentsMargins(14, 10, 10, 10)
+        out_layout.setSpacing(6)
+
+        head = QHBoxLayout()
+        lbl = QLabel(t("lbl_result").upper())
+        lbl.setStyleSheet(f"font-size: 10px; font-weight: 600; color: {theme.FAINT}; letter-spacing: 1px;")
+        head.addWidget(lbl)
+        head.addStretch()
+        self._btn_copy = CopyButton(self._output_text, STYLE_BTN)
+        self._btn_copy.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_copy.setVisible(False)
-        btn_row.addWidget(self._btn_copy)
+        head.addWidget(self._btn_copy)
+        out_layout.addLayout(head)
 
+        self._output = QTextEdit()
+        self._output.setPlaceholderText(t("placeholder_result"))
+        self._output.setToolTip(t("result_editable"))
+        self._output.setMinimumHeight(48)
+        self._output.setStyleSheet(STYLE_OUTPUT)
+        self._output.setReadOnly(True)
+        out_layout.addWidget(self._output)
 
+        layout.addWidget(out_frame, stretch=1)
+        self.set_state("idle")
 
-        layout.addLayout(btn_row)
-
-        # ── hint tray ─────────────────────────────────────────────────────
-        self._btn_tray = QPushButton(t("btn_tray"))
-        self._btn_tray.setStyleSheet(STYLE_BTN)
-        self._btn_tray.clicked.connect(self.tray_clicked)
-        layout.addWidget(self._btn_tray, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        layout.addStretch()
-        self.refresh_hint()
-
-    @staticmethod
-    def _output_style(color: str, italic: bool = False) -> str:
-        italic_str = "italic" if italic else "normal"
-        return f"""
-            QTextEdit {{
-                background: transparent;
-                border: none;
-                font-size: 14px;
-                color: {color};
-                font-style: {italic_str};
-            }}
-            QScrollBar:vertical {{
-                background: #111116; width: 6px; border-radius: 3px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: #444441; border-radius: 3px; min-height: 20px;
-            }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
-        """
+    def _output_text(self) -> str:
+        # el usuario puede corregir el resultado antes de copiarlo
+        return self._output.toPlainText().strip() or self._result_text
 
     # ── API pública ────────────────────────────────────────────────────────
-    
+
     def refresh_hint(self):
-        import config
         from gui.tab_settings import _key_display_name
         cfg = config.load()
-        hk = cfg.get("hotkey", "alt")
+        key = _key_display_name(cfg.get("hotkey", "alt"))
+        toggle = cfg.get("hotkey_mode", "hold") == "toggle"
+
+        hints = {
+            "idle":       t("hint_toggle" if toggle else "hint_hold"),
+            "recording":  t("hint_press_again" if toggle else "hint_release"),
+            "processing": t("hint_processing"),
+            "cancelling": t("hint_processing"),
+            "done":       t("hint_pasted" if self._pasted else "hint_done"),
+            "done_no_ai": t("hint_pasted" if self._pasted else "hint_done"),
+        }
+        self._hint.setText(hints.get(self._state, hints["idle"]).format(key=key))
+
         lang = cfg.get("language", "es").upper()
-        self._hint.setText(f"{_key_display_name(hk)} {t('tray_record_hint')} | {t('hint_lang')}: {lang}")
+        self._subhint.setText(f"{t('hint_lang')}: {lang}")
+
         cancel = t("btn_cancel")
         self._btn_cancel.setText(f"{cancel} (Esc)" if cfg.get("esc_cancels", True) else cancel)
 
     def set_state(self, state: str):
-        """state: 'idle' | 'recording' | 'processing' | 'cancelling' | 'done'"""
+        """state: 'idle' | 'recording' | 'processing' | 'cancelling' | 'done' | 'done_no_ai'"""
         self._state = state
-        labels = {
-            "idle":        (t("status_idle"),     "#888780", False),
-            "recording":   (t("status_recording"),"#E24B4A", True),
-            "processing":  (t("status_processing"),"#EF9F27", False),
-            "cancelling":  (t("status_canceling"),"#888780", False),
-            "done":        (t("status_done"),     "#639922", False),
-        }
-        text, color, wave_active = labels.get(state, labels["idle"])
-        self._badge.setText(text)
-        self._badge.setStyleSheet(STYLE_BADGE.format(color=color))
-        self._wave.set_active(wave_active)
+        key, color = BADGES.get(state, BADGES["idle"])
+        self._badge.setText(f"●  {t(key)}")
+        self._badge.setStyleSheet(STYLE_BADGE.format(
+            bg=_tinted(color, 28), border=_tinted(color, 90), color=color))
 
+        self._mic.set_state(state)
         self._btn_cancel.setVisible(state in ("recording", "processing"))
-        self._btn_copy.setVisible(state == "done")
+        self._btn_copy.setVisible(state in ("done", "done_no_ai"))
         self._btn_copy.reset()
+        if state in ("recording", "processing"):
+            self._banner.setVisible(False)
+        self.refresh_hint()
+
     @pyqtSlot(float)
     def update_level(self, rms: float):
-        self._wave.set_level(rms)
+        self._mic.set_level(rms)
 
-    def set_result(self, text: str, ai_failed: bool = False, error_msg: str = ""):
+    def set_result(self, text: str, ai_failed: bool = False, error_msg: str = "", pasted: bool = False):
         self._result_text = text
-        
-        display_text = text
+        self._pasted = pasted
+        self._output.setPlainText(text)
+        self._output.setReadOnly(False)
         if ai_failed:
-            display_text = f"{t('error_ai')}: {error_msg}\n{t('original_text_msg')}\n{text}"
-            
-        self._output.setPlainText(display_text)
-        self._output.setStyleSheet(self._output_style("#e8e6e3"))
-        self.set_state("done")
-        if ai_failed:
-            self._badge.setText(t("status_done_no_ai"))
-            self._badge.setStyleSheet(STYLE_BADGE.format(color="#EF9F27"))
+            self._show_banner("warning", f"⚠  {t('ai_failed_banner')}\n{error_msg}".strip())
+            self.set_state("done_no_ai")
+        else:
+            self._banner.setVisible(False)
+            self.set_state("done")
 
     def show_error(self, msg: str):
-        self._output.setPlainText(f"Error: {msg}")
-        self._output.setStyleSheet(self._output_style("#E24B4A"))
+        self._show_banner("error", f"✕  {msg}")
         self.set_state("idle")
 
+    def _show_banner(self, kind: str, text: str):
+        bg, border, color = BANNERS[kind]
+        self._banner.setStyleSheet(STYLE_BANNER.format(bg=bg, border=border, color=color))
+        self._banner.setText(text)
+        self._banner.setVisible(True)
+
+    # ── perfiles ───────────────────────────────────────────────────────────
+
     def _load_profiles(self):
-        import config
         cfg = config.load()
         self._profile_combo.blockSignals(True)
         self._profile_combo.clear()
@@ -300,9 +313,8 @@ class TranscribeTab(QWidget):
         self._profile_combo.blockSignals(False)
 
     def _on_profile_changed(self, idx: int):
-        if idx < 0: return
-        import config
+        if idx < 0:
+            return
         cfg = config.load()
-        pid = self._profile_combo.itemData(idx)
-        cfg["active_profile_id"] = pid
+        cfg["active_profile_id"] = self._profile_combo.itemData(idx)
         config.save(cfg)
